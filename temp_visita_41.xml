@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DatosEnergeticosDelEdificio version="2.1">
+  <IdentificacionEdificio>
+    <NombreDelEdificio>Vivienda unifamiliar existente</NombreDelEdificio>
+    <Direccion>{"reciA85zQPCxRA6jK"}</Direccion>
+    <Municipio>mostoles </Municipio>
+    <Provincia/>
+    <AnoConstruccion/>
+    <ZonaClimatica/>
+  </IdentificacionEdificio>
+  <DatosGeneralesyGeometria>
+    <SuperficieHabitable/>
+    <VolumenEspacioHabitable/>
+    <Compacidad/>
+  </DatosGeneralesyGeometria>
+  <DatosEnvolventeTermica>
+    <CerramientosOpacos/>
+    <HuecosyLucernarios/>
+  </DatosEnvolventeTermica>
+  <InstalacionesTermicas/>
+</DatosEnergeticosDelEdificio>
