@@ -3,7 +3,7 @@ const { Pool } = require('pg');
 let pool;
 
 if (process.env.DATABASE_URL) {
-  // 🔵 PRODUCCIÓN (Render)
+  // PRODUCCIÓN (Neon / Render)
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
@@ -11,7 +11,7 @@ if (process.env.DATABASE_URL) {
     }
   });
 } else {
-  // 🟢 LOCAL
+  // LOCAL
   pool = new Pool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
