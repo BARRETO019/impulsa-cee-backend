@@ -55,14 +55,12 @@ exports.register = async (req, res) => {
  */
 exports.login = async (req, res) => {
   try {
-    // Validación básica
     const { email, password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: "Email y contraseña obligatorios" });
     }
 
-    // Buscamos usuario por email
     const result = await pool.query(
       'SELECT * FROM users WHERE email = $1',
       [email]
@@ -74,27 +72,31 @@ exports.login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Comparamos contraseña enviada con la encriptada en BD
     const validPassword = await bcrypt.compare(password, user.password);
 
     if (!validPassword) {
       return res.status(401).json({ error: "Credenciales inválidas" });
     }
 
-    // Generamos token JWT
+    if (!process.env.JWT_SECRET) {
+      console.error("❌ ERROR: JWT_SECRET no definido.");
+      return res.status(500).json({ error: "Error interno" });
+    }
+
     const token = jwt.sign(
       {
         id: user.id,
         role: user.role
       },
       process.env.JWT_SECRET,
-      {
-        expiresIn: '8h'
-      }
+      { expiresIn: '8h' }
     );
 
-    // Login correcto → devolvemos token
-    res.json({ token });
+    // 👇 ESTA ES LA RESPUESTA CORRECTA
+    res.json({
+      token,
+      role: user.role
+    });
 
   } catch (error) {
     console.error(error);

@@ -14,13 +14,31 @@ const app = express();
 
 app.use(helmet());
 
+// * CORS PARA RENDER *
+const allowedOrigins = [
+  "http://localhost:5173",
+  process.env.FRONTEND_URL,                 // desde variable
+  "https://impulsa-cee-frontend.onrender.com"  // fijo por seguridad
+];
+
 app.use(cors({
-  origin: [
-    "http://localhost:5173",        // desarrollo
-    process.env.FRONTEND_URL        // producción
-  ],
+  origin: function (origin, callback) {
+    // permitir peticiones sin origin (ej: herramientas, curl)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error("CORS bloqueado: " + origin), false);
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
+
+// Responder correctamente OPTIONS (preflight)
+app.options("*", cors());
 
 app.use(express.json({ limit: "10mb" }));
 
