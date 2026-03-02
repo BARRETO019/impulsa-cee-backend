@@ -6,13 +6,12 @@ const fs = require('fs');
 // CARGAR CREDENCIALES OAUTH
 // =====================================================
 
-const credentialsPath = path.resolve(__dirname, '../config/drive-credentials.json');
+const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
 
-console.log('Cargando credenciales desde:', credentialsPath);
-
-const credentials = require(credentialsPath);
-
-console.log('Credenciales cargadas correctamente');
+const auth = new google.auth.GoogleAuth({
+  credentials: credentials,
+  scopes: ['https://www.googleapis.com/auth/drive']
+});
 
 // Extraemos datos del JSON
 const { client_secret, client_id, redirect_uris } =
