@@ -19,9 +19,9 @@ const path = require('path');
  * - La visita se asocia automáticamente al técnico logueado
  */
 
-//const airtableService = require('../services/airtable.service');
+const airtableService = require('../services/airtable.service');
 
-const pool = require('../config/db');
+//const pool = require('../config/db');
 
 exports.createVisit = async (req, res) => {
   try {
