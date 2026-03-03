@@ -1,18 +1,9 @@
-// Importamos express
 const express = require('express');
 const router = express.Router();
-
-// Importamos controlador
 const authController = require('../controllers/auth.controller');
-
-// Importamos servicio OAuth
 const oauthService = require('../services/oauth.service');
-
-// Middlewares
 const verifyToken = require('../middleware/auth.middleware');
 const verifyRole = require('../middleware/role.middleware');
-
-// Rate limiter solo para LOGIN
 const rateLimit = require('express-rate-limit');
 
 const loginLimiter = rateLimit({
@@ -23,45 +14,30 @@ const loginLimiter = rateLimit({
 
 /**
  * =====================================================
- *                 AUTH NORMAL
+ * AUTH - REGISTRO Y LOGIN
  * =====================================================
  */
 
-/**
- * SOLO ADMIN PUEDE REGISTRAR USUARIOS
- */
-router.post(
-  '/register',
-  verifyToken,
-  verifyRole('admin'),
-  authController.register
-);
+// ✅ REGISTRO ABIERTO TEMPORALMENTE
+// Hemos quitado verifyToken y verifyRole para que puedas crear tu usuario en Neon
+router.post('/register', authController.register);
 
-/**
- * LOGIN (público) + rate limit
- */
-router.post(
-  '/login',
-  loginLimiter,
-  authController.login
-);
+// LOGIN (público) + rate limit
+router.post('/login', loginLimiter, authController.login);
+
 
 /**
  * =====================================================
- *              GOOGLE DRIVE OAUTH
+ * GOOGLE DRIVE OAUTH
  * =====================================================
  */
-
-// Generar URL de autorización
 router.get('/drive/auth-url', (req, res) => {
   const url = oauthService.getAuthUrl();
   res.json({ url });
 });
 
-// Recibir código y guardar token
 router.get('/drive/callback', async (req, res) => {
   const { code } = req.query;
-
   try {
     await oauthService.saveToken(code);
     res.send('Drive autorizado correctamente 🚀');
