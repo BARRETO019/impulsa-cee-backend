@@ -22,84 +22,38 @@ const path = require('path');
 const airtableService = require('../services/airtable.service');
 
 exports.createVisit = async (req, res) => {
-  console.log("USER DECODIFICADO:", req.user);
   try {
+    // Recibimos los datos del frontend
+    const { airtable_id, cliente, municipio, provincia } = req.body;
+    const userId = req.user.id;
 
-    const {
-      direccion,
-      municipio,
-      provincia,
-      ano_construccion,
-      superficie,
-      motivo_certificado,
-      dormitorios,
-      num_plantas,
-      alturas_plantas,
-      tipo_aislamiento,
-      mediciones_particiones,
-      info_equipos,
-      medida_puerta_ventana,
-      airtable_id   // 👈 NUEVO
-    } = req.body;
+    console.log(`🔨 Intentando crear visita para: ${cliente}`);
 
-    const tecnico_id = req.user.id;
-
-    const result = await pool.query(
-      `
-      INSERT INTO visits (
-        tecnico_id,
-        direccion,
-        municipio,
-        provincia,
-        ano_construccion,
-        superficie,
-        motivo_certificado,
-        dormitorios,
-        num_plantas,
-        alturas_plantas,
-        tipo_aislamiento,
-        mediciones_particiones,
-        info_equipos,
-        medida_puerta_ventana,
-        airtable_id   -- 👈 NUEVO
-      )
-      VALUES (
-        $1,$2,$3,$4,$5,$6,
-        $7,$8,$9,$10,$11,$12,$13,$14,$15
-      )
-      RETURNING *
-      `,
+    // Insertamos en la tabla 'visits' incluyendo la provincia para evitar el error 500
+    const newVisit = await pool.query(
+      `INSERT INTO visits 
+       (user_id, airtable_record_id, client_name, localidad, provincia, status) 
+       VALUES ($1, $2, $3, $4, $5, $6) 
+       RETURNING *`,
       [
-        tecnico_id,
-        direccion,
-        municipio,
-        provincia,
-        ano_construccion,
-        superficie,
-        motivo_certificado,
-        dormitorios,
-        num_plantas,
-        alturas_plantas,
-        tipo_aislamiento,
-        mediciones_particiones,
-        info_equipos,
-        medida_puerta_ventana,
-        airtable_id   // 👈 NUEVO
+        userId, 
+        airtable_id, 
+        cliente, 
+        municipio || 'No especificado', 
+        provincia || 'Madrid', // 🚩 Valor por defecto si llega vacío
+        'borrador'
       ]
     );
 
-    // 🔥 ACTUALIZAR ESTADO EN AIRTABLE
-    if (airtable_id) {
-      await airtableService.updateEstado(airtable_id, "5. En visita");
-    }
-
-    res.status(201).json(result.rows[0]);
+    res.status(201).json(newVisit.rows[0]);
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Error creando visita" });
+    // Este log te mostrará si hay algún otro campo obligatorio que falte
+    console.error('❌ Error detallado al crear visita:', error.message);
+    res.status(500).json({ error: 'Error al iniciar la visita en la base de datos' });
   }
 };
+
 /**
  * =====================================================
  * OBTENER VISITAS DEL TÉCNICO AUTENTICADO
