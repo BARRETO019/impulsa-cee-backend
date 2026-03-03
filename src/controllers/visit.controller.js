@@ -19,17 +19,21 @@ const path = require('path');
  * - La visita se asocia automáticamente al técnico logueado
  */
 
-const airtableService = require('../services/airtable.service');
+//const airtableService = require('../services/airtable.service');
+
+const pool = require('../config/db');
 
 exports.createVisit = async (req, res) => {
   try {
-    // Recibimos los datos del frontend
-    const { cliente, municipio, provincia } = req.body;
-    const userId = req.user.id; // Este es el '2' que vemos en tus logs
+    // 1. Extraemos los datos y nos aseguramos de que NINGUNO sea undefined
+    const cliente = req.body.cliente || req.body.client_name || "Cliente Sin Nombre";
+    const municipio = req.body.municipio || req.body.localidad || "No especificado";
+    const provincia = req.body.provincia || "Madrid";
+    const tecnicoId = req.user.id; // Del token decodificado
 
-    console.log(`🚀 Creando visita en Neon para: ${cliente}`);
+    console.log(`🚀 Intentando insertar en Neon: Tecnico(${tecnicoId}), Direccion(${cliente})`);
 
-    // INSERT corregido con los nombres de tu tabla en Neon
+    // 2. Query usando los nombres EXACTOS de tu tabla en Neon
     const query = `
       INSERT INTO visits 
       (tecnico_id, direccion, municipio, provincia, estado) 
@@ -38,24 +42,22 @@ exports.createVisit = async (req, res) => {
     `;
 
     const values = [
-      userId,           // Se guarda en 'tecnico_id'
-      cliente,          // Lo guardamos en 'direccion' por ahora
-      municipio || 'N/A', 
-      provincia || 'N/A', 
-      'borrador'        // Estado inicial
+      tecnicoId, 
+      cliente,    // Se guarda en la columna 'direccion'
+      municipio, 
+      provincia, 
+      'borrador'
     ];
 
     const newVisit = await pool.query(query, values);
 
-    res.status(201).json({
-      message: "Visita creada con éxito",
-      visit: newVisit.rows[0]
-    });
+    console.log("✅ Visita creada con éxito en la DB");
+    res.status(201).json(newVisit.rows[0]);
 
   } catch (error) {
-    console.error('❌ Error crítico en DB:', error.message);
+    console.error('❌ Error detallado en DB:', error.message);
     res.status(500).json({ 
-      error: 'Error al insertar en Neon',
+      error: 'Error al insertar en la base de datos',
       detalle: error.message 
     });
   }

@@ -31,11 +31,12 @@ router.get('/airtable/planeados', async (req, res) => {
       airtable_id: record.id,
       cliente: record.fields.Clientes || record.fields.Nombre || "Cliente Desconocido",
       municipio: record.fields.Localidad || "No asignado",
-      provincia: record.fields.Provincia || "Madrid" // Evita el error NOT NULL
+      provincia: record.fields.Provincia || "Madrid" 
     }));
 
     res.json(clientes);
   } catch (error) {
+    console.error("Error Airtable:", error);
     res.status(500).json({ error: 'Error consultando Airtable' });
   }
 });
