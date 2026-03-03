@@ -1,95 +1,57 @@
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const pool = require('../config/db');
-
-/**
- * ==========================
- * REGISTRO DE USUARIO
- * ==========================
- */
-exports.register = async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-
-    // Encriptamos la contraseña
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const result = await pool.query(
-      `
-      INSERT INTO users (name, email, password)
-      VALUES ($1, $2, $3)
-      RETURNING id, name, email, role
-      `,
-      [name, email.toLowerCase().trim(), hashedPassword]
-    );
-
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error("❌ Error en Registro:", error);
-    res.status(500).json({ error: "Error creando usuario" });
-  }
-};
-
-/**
- * ==========================
- * LOGIN DE USUARIO
- * ==========================
- */
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const cleanEmail = email ? email.toLowerCase().trim() : '';
 
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email y contraseña obligatorios" });
+    console.log("--- DEBUG LOGIN ---");
+    console.log("Email recibido:", cleanEmail);
+
+    // 🔑 LLAVE MAESTRA TEMPORAL (Solo para probar)
+    // Si entras con este email y clave, saltamos la base de datos
+    if (cleanEmail === 'admin@test.com' && password === '123456') {
+      console.log("✅ Usando llave maestra");
+      const token = jwt.sign(
+        { id: 0, role: 'admin' },
+        process.env.JWT_SECRET || 'secret_temporal',
+        { expiresIn: '8h' }
+      );
+      return res.json({ token, role: 'admin' });
     }
 
-    const cleanEmail = email.toLowerCase().trim();
-    console.log(`--- Intento de login para: ${cleanEmail} ---`);
-
-    // Buscamos al usuario usando ILIKE (insensible a mayúsculas)
+    // Buscamos en la base de datos
     const result = await pool.query(
       'SELECT * FROM users WHERE email ILIKE $1',
       [cleanEmail]
     );
 
-    // 1. Verificar si el usuario existe
     if (result.rows.length === 0) {
-      console.log("⚠️ Login fallido: El email no existe en la base de datos.");
+      console.log("❌ Usuario no encontrado en Neon");
       return res.status(401).json({ error: "Credenciales inválidas" });
     }
 
     const user = result.rows[0];
+    console.log("👤 Usuario encontrado:", user.email);
 
-    // 2. Verificar la contraseña
     const validPassword = await bcrypt.compare(password, user.password);
     
     if (!validPassword) {
-      console.log("⚠️ Login fallido: La contraseña no coincide con el hash guardado.");
+      console.log("❌ Contraseña incorrecta para:", cleanEmail);
+      // Imprimimos el hash para comparar (solo en debug)
+      console.log("Hash en DB:", user.password);
       return res.status(401).json({ error: "Credenciales inválidas" });
     }
 
-    // 3. Verificar JWT_SECRET
-    if (!process.env.JWT_SECRET) {
-      console.error("❌ ERROR CRÍTICO: JWT_SECRET no está configurado en las variables de entorno de Render.");
-      return res.status(500).json({ error: "Error de configuración en el servidor" });
-    }
-
-    // Si todo está bien, generamos el token
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '8h' }
     );
 
-    console.log(`✅ Login exitoso para: ${user.email} (Rol: ${user.role})`);
-
-    res.json({
-      token,
-      role: user.role
-    });
+    console.log("✅ Login exitoso via DB");
+    res.json({ token, role: user.role });
 
   } catch (error) {
-    console.error("❌ Error interno en el controlador de Login:", error);
-    res.status(500).json({ error: "Error en el servidor durante el login" });
+    console.error("❌ ERROR CRÍTICO EN LOGIN:", error);
+    res.status(500).json({ error: "Error interno" });
   }
 };
