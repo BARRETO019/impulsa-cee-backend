@@ -37,8 +37,8 @@ app.use(cors({
   credentials: true
 }));
 
-// ✅ CORRECCIÓN AQUÍ: Se cambió "(*)" por "/:path*" para evitar el error de PathError
-app.options("/:path*", cors());
+
+app.options('(.*)', cors());
 
 app.use(express.json({ limit: "10mb" }));
 
