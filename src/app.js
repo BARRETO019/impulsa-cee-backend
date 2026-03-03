@@ -37,8 +37,9 @@ app.use(cors({
   credentials: true
 }));
 
-
-app.options('(.*)', cors());
+// ✅ SOLUCIÓN FINAL: En Express 5+, el asterisco solo '*' es la forma 
+// correcta y segura de capturar todas las rutas para el preflight de CORS.
+app.options('*', cors());
 
 app.use(express.json({ limit: "10mb" }));
 
