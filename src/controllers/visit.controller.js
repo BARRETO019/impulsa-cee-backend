@@ -211,10 +211,9 @@ exports.saveBuildingData = async (req, res) => {
  */
 exports.uploadPhoto = async (req, res) => {
   try {
-
     const visit_id = req.params.id;
 
-    // Verificar que la visita pertenece al técnico
+    // Comprobar visita
     const visitCheck = await pool.query(
       `SELECT * FROM visits WHERE id = $1 AND tecnico_id = $2`,
       [visit_id, req.user.id]
@@ -224,33 +223,37 @@ exports.uploadPhoto = async (req, res) => {
       return res.status(403).json({ error: "No autorizado" });
     }
 
-    // Archivo subido
-    const file = req.file;
+    // Ahora usamos req.files (no req.file)
+    const files = req.files;
 
-    if (!file) {
-      return res.status(400).json({ error: "No se subió ningún archivo" });
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: "No se subieron archivos" });
     }
 
-    // Guardamos referencia en BD
-    const result = await pool.query(
-      `
-      INSERT INTO visit_photos (visit_id, filename, filepath, tipo)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-      `,
-      [
-        visit_id,
-        file.filename,
-        file.path,
-        req.body.tipo || 'general'
-      ]
-    );
+    const inserted = [];
 
-    res.status(201).json(result.rows[0]);
+    for (const file of files) {
+      const result = await pool.query(
+        `
+        INSERT INTO visit_photos (visit_id, filename, filepath, tipo)
+        VALUES ($1, $2, $3, $4)
+        RETURNING *
+        `,
+        [
+          visit_id,
+          file.filename,
+          file.path,
+          req.body.tipo || "general"
+        ]
+      );
 
+      inserted.push(result.rows[0]);
+    }
+
+    res.status(201).json(inserted);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Error subiendo foto" });
+    res.status(500).json({ error: "Error subiendo fotos" });
   }
 };
 /**
