@@ -43,3 +43,9 @@ exports.updateEstado = async (recordId, nuevoEstado) => {
     throw error;
   }
 };
+
+// Añade esto justo debajo de tus constantes para depurar en los logs de Render
+console.log('--- Configuración Airtable ---');
+console.log('Base ID:', BASE_ID ? 'Configurado ✅' : 'FALTA ❌');
+console.log('Table Name:', TABLE_NAME ? 'Configurado ✅' : 'FALTA ❌');
+console.log('Token:', TOKEN ? 'Configurado ✅' : 'FALTA ❌');
