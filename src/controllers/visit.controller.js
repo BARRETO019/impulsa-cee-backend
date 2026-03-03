@@ -23,33 +23,41 @@ const airtableService = require('../services/airtable.service');
 
 exports.createVisit = async (req, res) => {
   try {
-    // Recibimos los datos que envía el frontend
-    const { airtable_id, cliente, municipio, provincia } = req.body;
-    const userId = req.user.id; // Usuario autenticado
+    // Recibimos los datos del frontend
+    const { cliente, municipio, provincia } = req.body;
+    const userId = req.user.id; // Este es el '2' que vemos en tus logs
 
-    console.log(`🔨 Creando visita en DB para: ${cliente}`);
+    console.log(`🚀 Creando visita en Neon para: ${cliente}`);
 
-    // Insertamos incluyendo la provincia para cumplir con la restricción de la DB
-    const newVisit = await pool.query(
-      `INSERT INTO visits 
-       (user_id, airtable_record_id, client_name, localidad, provincia, status) 
-       VALUES ($1, $2, $3, $4, $5, $6) 
-       RETURNING *`,
-      [
-        userId, 
-        airtable_id, 
-        cliente, 
-        municipio || 'No especificado', 
-        provincia || 'Madrid', // 🚩 Seguridad extra: si llega null, usamos un default
-        'borrador'
-      ]
-    );
+    // INSERT corregido con los nombres de tu tabla en Neon
+    const query = `
+      INSERT INTO visits 
+      (tecnico_id, direccion, municipio, provincia, estado) 
+      VALUES ($1, $2, $3, $4, $5) 
+      RETURNING *
+    `;
 
-    res.status(201).json(newVisit.rows[0]);
+    const values = [
+      userId,           // Se guarda en 'tecnico_id'
+      cliente,          // Lo guardamos en 'direccion' por ahora
+      municipio || 'N/A', 
+      provincia || 'N/A', 
+      'borrador'        // Estado inicial
+    ];
+
+    const newVisit = await pool.query(query, values);
+
+    res.status(201).json({
+      message: "Visita creada con éxito",
+      visit: newVisit.rows[0]
+    });
 
   } catch (error) {
-    console.error('❌ Error detallado en DB:', error.message);
-    res.status(500).json({ error: 'Error al iniciar la visita en la base de datos' });
+    console.error('❌ Error crítico en DB:', error.message);
+    res.status(500).json({ 
+      error: 'Error al insertar en Neon',
+      detalle: error.message 
+    });
   }
 };
 

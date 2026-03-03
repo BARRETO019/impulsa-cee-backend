@@ -29,15 +29,13 @@ router.get('/airtable/planeados', async (req, res) => {
 
     const clientes = records.map(record => ({
       airtable_id: record.id,
-      cliente: record.fields.Clientes || record.fields.Nombre || "Sin nombre",
-      municipio: record.fields.Localidad || "Ubicación no disponible",
-      // 🚩 Extraemos la provincia o ponemos una por defecto para evitar el error 500
-      provincia: record.fields.Provincia || "Madrid" 
+      cliente: record.fields.Clientes || record.fields.Nombre || "Cliente Desconocido",
+      municipio: record.fields.Localidad || "No asignado",
+      provincia: record.fields.Provincia || "Madrid" // Evita el error NOT NULL
     }));
 
     res.json(clientes);
   } catch (error) {
-    console.error('Error en Airtable Route:', error);
     res.status(500).json({ error: 'Error consultando Airtable' });
   }
 });
