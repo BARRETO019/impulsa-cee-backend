@@ -21,11 +21,9 @@ const allowedOrigins = [
   "https://impulsa-cee-frontend.onrender.com"  // fijo por seguridad
 ];
 
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
-    // permitir peticiones sin origin (ej: herramientas, curl)
     if (!origin) return callback(null, true);
-
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     } else {
@@ -35,11 +33,11 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
-}));
+};
 
-// ✅ SOLUCIÓN FINAL: En Express 5+, el asterisco solo '*' es la forma 
-// correcta y segura de capturar todas las rutas para el preflight de CORS.
-app.options('*', cors());
+// ✅ SOLUCIÓN RADICAL: Aplicamos CORS globalmente. 
+// Esto maneja automáticamente los OPTIONS sin necesidad de definir rutas con "*"
+app.use(cors(corsOptions));
 
 app.use(express.json({ limit: "10mb" }));
 
