@@ -23,13 +23,13 @@ const airtableService = require('../services/airtable.service');
 
 exports.createVisit = async (req, res) => {
   try {
-    // Recibimos los datos del frontend
+    // Recibimos los datos que envía el frontend
     const { airtable_id, cliente, municipio, provincia } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.id; // Usuario autenticado
 
-    console.log(`🔨 Intentando crear visita para: ${cliente}`);
+    console.log(`🔨 Creando visita en DB para: ${cliente}`);
 
-    // Insertamos en la tabla 'visits' incluyendo la provincia para evitar el error 500
+    // Insertamos incluyendo la provincia para cumplir con la restricción de la DB
     const newVisit = await pool.query(
       `INSERT INTO visits 
        (user_id, airtable_record_id, client_name, localidad, provincia, status) 
@@ -40,7 +40,7 @@ exports.createVisit = async (req, res) => {
         airtable_id, 
         cliente, 
         municipio || 'No especificado', 
-        provincia || 'Madrid', // 🚩 Valor por defecto si llega vacío
+        provincia || 'Madrid', // 🚩 Seguridad extra: si llega null, usamos un default
         'borrador'
       ]
     );
@@ -48,8 +48,7 @@ exports.createVisit = async (req, res) => {
     res.status(201).json(newVisit.rows[0]);
 
   } catch (error) {
-    // Este log te mostrará si hay algún otro campo obligatorio que falte
-    console.error('❌ Error detallado al crear visita:', error.message);
+    console.error('❌ Error detallado en DB:', error.message);
     res.status(500).json({ error: 'Error al iniciar la visita en la base de datos' });
   }
 };

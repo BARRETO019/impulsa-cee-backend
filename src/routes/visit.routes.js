@@ -31,7 +31,7 @@ router.get('/airtable/planeados', async (req, res) => {
       airtable_id: record.id,
       cliente: record.fields.Clientes || record.fields.Nombre || "Sin nombre",
       municipio: record.fields.Localidad || "Ubicación no disponible",
-      // 🚩 Añadimos provincia para que no llegue NULL a la base de datos
+      // 🚩 Extraemos la provincia o ponemos una por defecto para evitar el error 500
       provincia: record.fields.Provincia || "Madrid" 
     }));
 
@@ -41,7 +41,6 @@ router.get('/airtable/planeados', async (req, res) => {
     res.status(500).json({ error: 'Error consultando Airtable' });
   }
 });
-
 /**
  * =====================================================
  * RUTAS PROTEGIDAS DE VISITAS
