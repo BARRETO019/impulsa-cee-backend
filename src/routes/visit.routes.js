@@ -56,14 +56,7 @@ router.get('/', verifyToken, verifyRole(rolesAutorizados), visitController.getMy
 router.put('/:id/building', verifyToken, verifyRole(rolesAutorizados), visitController.saveBuildingData);
 
 // Subida de fotos
-router.post(
-  '/:id/photos',
-  verifyToken,
-  verifyRole(rolesAutorizados),
-  upload.array('photo', 50),
-  visitController.uploadPhoto
-);
-
+router.post('/:id/photos', verifyToken, verifyRole(rolesAutorizados), upload.array('photo', 50), visitController.uploadPhoto);
 // Envolvente, Ventanas e Instalaciones
 router.post('/:id/envelope', verifyToken, verifyRole(rolesAutorizados), visitController.addEnvelopeElement);
 router.get('/:id/envelope', verifyToken, verifyRole(rolesAutorizados), visitController.getEnvelope);
