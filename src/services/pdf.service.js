@@ -102,14 +102,15 @@ exports.generatePDF = (res, data) => {
 
   installations.forEach(i => {
 
-    doc.fontSize(12)
-      .text(`${i.tipo || 'Equipo'} - ${i.marca_modelo || 'No especificado'}`)
-      .text(`Combustible: ${i.energia || 'No especificado'}`)
-      .text(`Potencia: ${i.potencia || 'No especificado'} kW`)
-      .text(`Año aproximado: ${i.ano_aprox || 'No especificado'}`)
-      .moveDown();
+  doc.fontSize(12)
+    .text(`${i.tipo || 'Equipo'} - ${i.generador || 'No especificado'}`)
+    .text(`Combustible: ${i.combustible || 'No especificado'}`)
+    .text(`Potencia: ${i.potencia_nominal || 'No especificado'} kW`)
+    .text(`Rendimiento: ${i.rendimiento_estacional || 'No especificado'}`)
+    .text(`Año instalación: ${i.ano_instalacion || 'No especificado'}`)
+    .moveDown();
 
-  });
+});
 
   // ===============================
   // FOTOS
