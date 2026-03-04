@@ -771,15 +771,36 @@ exports.finalizeVisit = async (req, res) => {
       }
     }
 
-      // ACTUALIZAR ESTADO EN AIRTABLE
-      // ===============================
+    // ACTUALIZAR ESTADO EN AIRTABLE
+    // ===============================
+    // ===============================
+// ACTUALIZAR ESTADO EN AIRTABLE
+// ===============================
 
-    if (visit.airtable_id) {
-        await airtableService.updateEstado(
-          visit.airtable_id,
-            "5. En curso"
-            );
-    }
+if (visit.airtable_id) {
+
+  try {
+
+    console.log("Actualizando Airtable:", visit.airtable_id);
+
+    await airtableService.updateEstado(
+      visit.airtable_id,
+      "5. En curso"
+    );
+
+    console.log("Airtable actualizado correctamente");
+
+  } catch (error) {
+
+    console.error("Error actualizando Airtable:", error);
+
+  }
+
+} else {
+
+  console.log("La visita no tiene airtable_id");
+
+}
 
 // ===============================
 // ACTUALIZAR ESTADO EN NUESTRA BD
