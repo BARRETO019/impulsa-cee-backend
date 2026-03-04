@@ -26,13 +26,23 @@ const airtableService = require('../services/airtable.service');
 router.get('/airtable/planeados', async (req, res) => {
   try {
     const records = await airtableService.getPlaneados();
-
     const clientes = records.map(record => ({
-      airtable_id: record.id,
-      cliente: record.fields.Clientes || record.fields.Nombre || "Cliente Desconocido",
-      municipio: record.fields.Localidad || "No asignado",
-      provincia: record.fields.Provincia || "Madrid" 
-    }));
+  airtable_id: record.id,
+
+  cliente:
+    record.fields["Cliente"] ||
+    record.fields["Clientes"] ||
+    record.fields["Nombre"] ||
+    "Cliente Desconocido",
+
+  direccion:
+    record.fields["Dirección"] ||
+    record.fields["Direccion"] ||
+    "Dirección no disponible",
+
+  municipio: record.fields["Localidad"] || "",
+  provincia: record.fields["Provincia"] || ""
+  }));
 
     res.json(clientes);
   } catch (error) {
