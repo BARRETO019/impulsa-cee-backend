@@ -157,3 +157,46 @@ exports.generatePDF = (res, data) => {
   doc.end();
 
 };
+exports.generatePDFToFile = (filePath, data) => {
+
+  const { visit, building, envelope, windows, installations } = data;
+
+  const PDFDocument = require('pdfkit');
+  const fs = require('fs');
+  const path = require('path');
+
+  const doc = new PDFDocument({ margin: 50 });
+
+  doc.pipe(fs.createWriteStream(filePath));
+
+  const logoPath = path.join(__dirname, '../assets/logo.png');
+
+  try {
+    doc.image(logoPath, 50, 40, { width: 80 });
+  } catch {
+    console.log("Logo no encontrado");
+  }
+
+  doc.fontSize(18).text('IMPULSA ENERGÍA', 150, 45);
+  doc.fontSize(12).text('Informe Técnico CEE', 150, 65);
+
+  doc.moveDown(3);
+
+  doc.moveTo(50, 110).lineTo(550, 110).stroke();
+
+  doc.moveDown(2);
+
+  doc.fontSize(14).text('Datos Generales', { underline: true });
+  doc.moveDown();
+
+  doc.fontSize(12);
+  doc.text(`Dirección: ${visit.direccion || ''}`);
+  doc.text(`Municipio: ${visit.municipio || ''}`);
+  doc.text(`Provincia: ${visit.provincia || ''}`);
+  doc.text(`Año Construcción: ${visit.ano_construccion || ''}`);
+  doc.text(`Zona Climática: ${building?.zona_climatica || ''}`);
+  doc.text(`Superficie Habitable: ${building?.superficie_habitable || ''}`);
+
+  doc.end();
+
+};
