@@ -36,7 +36,36 @@ exports.generatePDF = (res, data) => {
   // TÍTULO
   // =====================================================
 
-  doc.fontSize(20).text('INFORME TECNICO CEE', { align: 'center' });
+ const logoPath = path.join(__dirname, '../assets/logo.png');
+
+try {
+  doc.image(logoPath, 50, 40, { width: 80 });
+} catch (err) {
+  console.log("Logo no encontrado");
+}
+
+doc
+  .fontSize(18)
+  .text('IMPULSA ENERGÍA', 150, 45);
+
+doc
+  .fontSize(12)
+  .text('Informe Técnico CEE', 150, 65);
+
+doc.moveDown(3);
+
+doc.moveTo(50, 110)
+   .lineTo(550, 110)
+   .stroke();
+
+doc.moveDown(2);
+
+doc.fontSize(10)
+   .text(`Fecha del informe: ${new Date().toLocaleDateString()}`, {
+     align: 'right'
+   });
+
+doc.moveDown(2);
   doc.moveDown(2);
 
   // =====================================================
