@@ -202,7 +202,28 @@ exports.generatePDFToFile = (filePath, data) => {
   doc.pipe(fs.createWriteStream(filePath));
 
   // TITULO
-  doc.fontSize(20).text('INFORME TECNICO CEE', { align: 'center' });
+ const logoPath = path.join(__dirname, '../assets/logo.png');
+
+  try {
+  doc.image(logoPath, 50, 40, { width: 80 });
+  } catch (err) {
+  console.log("Logo no encontrado");
+  }
+
+  doc
+  .fontSize(18)
+  .text('IMPULSA ENERGÍA', 150, 45);
+
+  doc
+  .fontSize(12)
+  .text('Informe técnico de visita energética', 150, 65);
+
+  doc.moveDown(3);
+
+  doc.moveTo(50, 110)
+   .lineTo(550, 110)
+   .stroke();
+
   doc.moveDown(2);
 
   // DATOS GENERALES
