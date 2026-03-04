@@ -26,14 +26,15 @@ const airtableService = require('../services/airtable.service');
 exports.createVisit = async (req, res) => {
   try {
     // 1. Extraemos los datos y nos aseguramos de que NINGUNO sea undefined
-    const cliente = req.body.cliente || req.body.client_name || "Cliente Sin Nombre";
-    const municipio = req.body.municipio || req.body.localidad || "No especificado";
+    const cliente = req.body.cliente || "Cliente Sin Nombre";
+    const direccion = req.body.direccion || cliente;
+    const municipio = req.body.municipio || "No especificado";
     const provincia = req.body.provincia || "Madrid";
-    const tecnicoId = req.user.id; // Del token decodificado
+    const tecnicoId = req.user.id;
 
     console.log(`🚀 Intentando insertar en Neon: Tecnico(${tecnicoId}), Direccion(${cliente})`);
 
-    // 2. Query usando los nombres EXACTOS de tu tabla en Neon
+    // 2. Query usando los nombres EXACTOS de tu tabla en Neon  
     const query = `
       INSERT INTO visits 
       (tecnico_id, direccion, municipio, provincia, estado) 
