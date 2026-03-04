@@ -26,7 +26,7 @@ const airtableService = require('../services/airtable.service');
 exports.createVisit = async (req, res) => {
   try {
     // 1. Extraemos los datos y nos aseguramos de que NINGUNO sea undefined
-    const cliente = req.body.cliente || "Cliente Sin Nombre";
+    const cliente = req.body.cliente ||  cliente;
     const direccion = req.body.direccion || cliente;
     const municipio = req.body.municipio || "No especificado";
     const provincia = req.body.provincia || "Madrid";
