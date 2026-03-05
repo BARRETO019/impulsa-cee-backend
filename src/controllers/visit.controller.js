@@ -1,7 +1,7 @@
-const driveService = require('../services/drive.service'); // NOMBRE CORREGIDO
+const driveService = require('../services/drive.service'); 
 const fs = require('fs');
 const path = require('path');
-const pool = require('../config/db'); // Tu conexión a la base de datos
+const pool = require('../config/db'); 
 const pdfService = require('../services/pdf.service');
 
 // --- 1. GESTIÓN DE VISITAS ---
@@ -28,13 +28,12 @@ exports.getMyVisits = async (req, res) => {
   } catch (error) { res.status(500).json({ error: "Error obteniendo visitas" }); }
 };
 
-// --- 2. DATOS EDIFICIO (Ajustado a StepGeneral del Wizard) ---
+// --- 2. DATOS EDIFICIO ---
 exports.saveBuildingData = async (req, res) => {
   try {
     const { id } = req.params;
     const { zona_climatica, normativa, referencia_catastral, superficie_habitable, ano_construccion, motivo_certificado, alturas_plantas, num_plantas } = req.body;
     
-    // Actualizamos la tabla principal de visits y la de building
     await pool.query(
       `UPDATE visits SET ano_construccion=$1, motivo_certificado=$2, num_plantas=$3, alturas_plantas=$4 WHERE id=$5`,
       [ano_construccion, motivo_certificado, num_plantas, alturas_plantas, id]
@@ -51,11 +50,10 @@ exports.saveBuildingData = async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
-// --- 3. ENVOLVENTE (Ajustado a StepEnvelope) ---
+// --- 3. ENVOLVENTE ---
 exports.addEnvelopeElement = async (req, res) => {
   try {
     const { tipo, orientacion, superficie, transmitancia } = req.body;
-    // IMPORTANTE: Tu tabla en Neon NO tiene 'observaciones', así que lo omitimos
     const query = `INSERT INTO visit_envelope (visit_id, tipo, nombre, superficie, orientacion, transmitancia) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
     const result = await pool.query(query, [req.params.id, tipo, tipo, superficie || 0, orientacion, transmitancia || 0]);
     res.status(201).json(result.rows[0]);
@@ -63,131 +61,71 @@ exports.addEnvelopeElement = async (req, res) => {
 };
 
 exports.getEnvelope = async (req, res) => {
-  const result = await pool.query(`SELECT * FROM visit_envelope WHERE visit_id = $1`, [req.params.id]);
-  res.json(result.rows);
+  try {
+    const result = await pool.query(`SELECT * FROM visit_envelope WHERE visit_id = $1`, [req.params.id]);
+    res.json(result.rows);
+  } catch (error) { res.status(500).json({ error: "Error obteniendo envolvente" }); }
 };
 
-// --- 4. VENTANAS (Corregido para el Paso 3 del Wizard) ---
+// --- 4. VENTANAS ---
 exports.addWindow = async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, marco, vidrio, superficie } = req.body;
-
-    // Ajustamos la consulta para que coincida con la estructura de Neon
-    // Tu tabla espera: visit_id, tipo (o nombre), superficie, orientacion, marco, vidrio
-    const query = `
-      INSERT INTO visit_windows (visit_id, nombre, superficie, orientacion, marco, vidrio) 
-      VALUES ($1, $2, $3, $4, $5, $6) 
-      RETURNING *`;
-    
-    // Si el Wizard no envía orientación, ponemos 'N/A' para evitar fallos de nulidad
-    const result = await pool.query(query, [
-      id, 
-      nombre || "Ventana", 
-      parseFloat(superficie) || 0, 
-      "N/A", 
-      marco || "No especificado", 
-      vidrio || "No especificado"
-    ]);
-
+    const query = `INSERT INTO visit_windows (visit_id, nombre, superficie, orientacion, marco, vidrio) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
+    const result = await pool.query(query, [id, nombre || "Ventana", parseFloat(superficie) || 0, "N/A", marco || "No especificado", vidrio || "No especificado"]);
     res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error("Error detallado en Windows:", error);
-    res.status(500).json({ error: "Error al guardar la ventana" });
-  }
+  } catch (error) { res.status(500).json({ error: "Error al guardar la ventana" }); }
 };
 
 exports.getWindows = async (req, res) => {
   try {
     const result = await pool.query(`SELECT * FROM visit_windows WHERE visit_id = $1`, [req.params.id]);
     res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: "Error obteniendo ventanas" });
-  }
+  } catch (error) { res.status(500).json({ error: "Error obteniendo ventanas" }); }
 };
 
-// --- 5. INSTALACIONES (Ajustado a StepInstallations) ---
-// --- 5. INSTALACIONES (Pre-corregido para el Paso 4) ---
+// --- 5. INSTALACIONES ---
 exports.addInstallation = async (req, res) => {
   try {
     const { tipo, energia, marca_modelo, potencia, ano_aprox } = req.body;
-    
-    // Tu tabla en Neon usa: combustible (no energia), generador (no marca_modelo), 
-    // potencia_nominal (no potencia), ano_instalacion (no ano_aprox)
-    const query = `
-      INSERT INTO visit_installations (visit_id, tipo, combustible, generador, potencia_nominal, ano_instalacion) 
-      VALUES ($1, $2, $3, $4, $5, $6) 
-      RETURNING *`;
-      
-    const result = await pool.query(query, [
-      req.params.id, 
-      tipo, 
-      energia || "No especificado", 
-      marca_modelo || "Genérico", 
-      parseFloat(potencia) || 0, 
-      parseInt(ano_aprox) || 0
-    ]);
-    
+    const query = `INSERT INTO visit_installations (visit_id, tipo, combustible, generador, potencia_nominal, ano_instalacion) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
+    const result = await pool.query(query, [req.params.id, tipo, energia || "No especificado", marca_modelo || "Genérico", parseFloat(potencia) || 0, parseInt(ano_aprox) || 0]);
     res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error("Error en Instalaciones:", error);
-    res.status(500).json({ error: "Error al guardar instalación" });
-  }
-};
-exports.getInstallations = async (req, res) => {
-  const result = await pool.query(`SELECT * FROM visit_installations WHERE visit_id = $1`, [req.params.id]);
-  res.json(result.rows);
+  } catch (error) { res.status(500).json({ error: "Error al guardar instalación" }); }
 };
 
-// --- 6. FOTOS Y FINALIZACIÓN ---
+exports.getInstallations = async (req, res) => {
+  try {
+    const result = await pool.query(`SELECT * FROM visit_installations WHERE visit_id = $1`, [req.params.id]);
+    res.json(result.rows);
+  } catch (error) { res.status(500).json({ error: "Error obteniendo instalaciones" }); }
+};
+
+// --- 6. FOTOS (Subida a Drive) ---
 exports.uploadPhoto = async (req, res) => {
   try {
     const { id } = req.params;
     const files = req.files; 
+    if (!files || files.length === 0) return res.status(400).json({ error: "No hay fotos" });
 
-    if (!files || files.length === 0) {
-      return res.status(400).json({ error: "No se han seleccionado fotos." });
-    }
-
-    // 1. Usamos tu función para obtener o crear la carpeta en Drive
     const folderId = await driveService.getOrCreateClientFolder(`Visita_${id}`);
-
     const savedPhotos = [];
 
     for (const file of files) {
-      const filePath = file.path; 
-      const fileName = file.filename;
-
-      // 2. Subida a Google Drive usando TU función 'uploadFile'
-      const driveFileId = await driveService.uploadFile(filePath, fileName, folderId);
-
-      // 3. Registrar en Neon
-      const query = `
-        INSERT INTO visit_photos (visit_id, filename, filepath, tipo) 
-        VALUES ($1, $2, $3, $4) RETURNING *`;
-      
-      const result = await pool.query(query, [
-        id, 
-        file.originalname, 
-        driveFileId, // Guardamos el ID de Drive
-        'general'
-      ]);
-
-      // 4. Limpieza: Borrar de Render para que no se llene el disco
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-
+      const driveFileId = await driveService.uploadFile(file.path, file.filename, folderId);
+      const result = await pool.query(
+        `INSERT INTO visit_photos (visit_id, filename, filepath, tipo) VALUES ($1, $2, $3, $4) RETURNING *`,
+        [id, file.originalname, driveFileId, 'general']
+      );
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
       savedPhotos.push(result.rows[0]);
     }
-
-    res.status(201).json({ message: "¡Subido a Drive con éxito!", count: savedPhotos.length });
-  } catch (error) {
-    console.error("Error en uploadPhoto:", error);
-    res.status(500).json({ error: "Error al procesar la subida a Drive." });
-  }
+    res.status(201).json({ message: "Subido a Drive", count: savedPhotos.length });
+  } catch (error) { res.status(500).json({ error: "Error en Drive" }); }
 };
 
+// --- 7. EXPORTACIÓN Y FINALIZACIÓN ---
 exports.exportPDF = async (req, res) => {
   try {
     const id = req.params.id;
@@ -205,8 +143,6 @@ exports.exportPDF = async (req, res) => {
 
 exports.exportXML = async (req, res) => res.json({ message: "XML no implementado" });
 
-// Dentro de visit.controller.js
-
 exports.finalizeVisit = async (req, res) => {
   try {
     const { id } = req.params;
@@ -214,7 +150,7 @@ exports.finalizeVisit = async (req, res) => {
     // 1. Marcar como finalizada en Neon
     await pool.query(`UPDATE visits SET estado = 'finalizada' WHERE id = $1`, [id]);
 
-    // 2. Obtener todos los datos para el PDF
+    // 2. Obtener datos
     const data = {
       visit: (await pool.query(`SELECT * FROM visits WHERE id = $1`, [id])).rows[0],
       building: (await pool.query(`SELECT * FROM visit_building WHERE visit_id = $1`, [id])).rows[0],
@@ -224,25 +160,33 @@ exports.finalizeVisit = async (req, res) => {
       photos: (await pool.query(`SELECT * FROM visit_photos WHERE visit_id = $1`, [id])).rows
     };
 
-    // 3. Generar PDF localmente (temporal)
-    const pdfPath = await pdfService.createPDFFile(data); // Necesitarás crear esta función en tu pdfService
-
-    // 4. Obtener la carpeta de Drive de esta visita
+    // 3. Obtener carpeta de Drive
     const folderId = await driveService.getOrCreateClientFolder(`Visita_${id}`);
 
-    // 5. SUBIR PDF A DRIVE
+    // 4. PDF a Drive
+    const pdfPath = path.join(__dirname, `../../temp_report_${id}.pdf`);
+    await pdfService.createPDFFile(data, pdfPath); // Asegúrate de que esta función guarde el archivo en pdfPath
     await driveService.uploadFile(pdfPath, `Informe_Visita_${id}.pdf`, folderId);
+    if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
 
-    // 6. (Opcional) Hacer lo mismo con el XML si ya tienes el servicio listo
-    // const xmlPath = await xmlService.createXMLFile(data);
-    // await driveService.uploadFile(xmlPath, `Datos_Visita_${id}.xml`, folderId);
-
-    // 7. Limpiar archivos temporales del servidor
-    fs.unlinkSync(pdfPath);
+    // 5. XML a Drive (Simulado si no tienes servicio)
+    const xmlPath = path.join(__dirname, `../../temp_data_${id}.xml`);
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?><visita id="${id}"><estado>finalizada</estado></visita>`;
+    fs.writeFileSync(xmlPath, xmlContent);
+    await driveService.uploadFile(xmlPath, `Datos_Visita_${id}.xml`, folderId);
+    if (fs.existsSync(xmlPath)) fs.unlinkSync(xmlPath);
 
     res.json({ message: "Visita finalizada y documentos subidos a Drive" });
   } catch (error) {
     console.error("Error al finalizar:", error);
     res.status(500).json({ error: "No se pudo finalizar o subir documentos" });
   }
+};
+
+// --- 8. ELIMINAR ---
+exports.deleteVisit = async (req, res) => {
+  try {
+    await pool.query(`DELETE FROM visits WHERE id = $1`, [req.params.id]);
+    res.json({ message: "Borrada" });
+  } catch (error) { res.status(500).json({ error: "Error al borrar" }); }
 };
