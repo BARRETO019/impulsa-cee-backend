@@ -137,42 +137,62 @@ exports.getInstallations = async (req, res) => {
 };
 
 // --- 6. FOTOS Y FINALIZACIÓN ---
+const driveService = require('../services/googleDrive.service'); // Tu servicio
+const fs = require('fs');
+const path = require('path');
+
 exports.uploadPhoto = async (req, res) => {
   try {
     const { id } = req.params;
-    const files = req.files; // Multer inyecta aquí el array de archivos
+    const files = req.files; // Array de archivos de Multer
 
     if (!files || files.length === 0) {
-      return res.status(400).json({ error: "No se han recibido archivos." });
+      return res.status(400).json({ error: "No se han recibido fotos" });
     }
+
+    // 1. Obtener o crear carpeta para la visita en Drive
+    // Usamos el ID de la visita como nombre de carpeta para organizarlo bien
+    const folderId = await driveService.getOrCreateClientFolder(`Visita_${id}`);
 
     const savedPhotos = [];
 
-    // Recorremos el array de archivos que envió el frontend
     for (const file of files) {
+      // file.path existe porque Multer diskStorage lo guardó temporalmente
+      const filePath = file.path;
+      const fileName = `${Date.now()}-${file.originalname}`;
+
+      // 2. Subir a Google Drive usando TU función
+      const driveFileId = await driveService.uploadFile(filePath, fileName, folderId);
+
+      // 3. Registrar en Neon
+      // Guardamos el ID de Drive para que el PDF sepa qué descargar
       const query = `
         INSERT INTO visit_photos (visit_id, filename, filepath, tipo) 
-        VALUES ($1, $2, $3, $4) 
-        RETURNING *`;
+        VALUES ($1, $2, $3, $4) RETURNING *`;
       
       const result = await pool.query(query, [
         id, 
-        file.originalname, 
-        file.path || file.location, // 'path' para local/disk, 'location' para S3/Cloudinary
+        fileName, 
+        driveFileId, // Guardamos el ID de Drive
         'general'
       ]);
-      
+
+      // 4. Limpieza: Borrar el archivo temporal de Render para no llenar el disco
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+
       savedPhotos.push(result.rows[0]);
     }
 
     res.status(201).json({
-      message: "Fotos guardadas correctamente",
+      message: "¡Fotos subidas a Google Drive!",
       photos: savedPhotos
     });
 
   } catch (error) {
-    console.error("Error detallado en uploadPhoto:", error);
-    res.status(500).json({ error: "Error interno al procesar las imágenes." });
+    console.error("Error completo en subida:", error);
+    res.status(500).json({ error: "Error al procesar la subida a Drive" });
   }
 };
 exports.exportPDF = async (req, res) => {
