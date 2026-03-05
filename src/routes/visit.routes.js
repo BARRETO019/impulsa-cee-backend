@@ -40,6 +40,12 @@ router.get('/airtable/planeados', async (req, res) => {
  * RUTAS DE VISITAS (Protegidas)
  */
 
+// ... (resto del código anterior igual)
+
+/**
+ * RUTAS DE VISITAS (Protegidas)
+ */
+
 // 1. Gestión base
 router.post('/', verifyToken, verifyRole(rolesAutorizados), visitController.createVisit);
 router.get('/', verifyToken, verifyRole(rolesAutorizados), visitController.getMyVisits);
@@ -60,10 +66,11 @@ router.post('/:id/installations', verifyToken, verifyRole(rolesAutorizados), vis
 router.get('/:id/installations', verifyToken, verifyRole(rolesAutorizados), visitController.getInstallations);
 
 // 6. Paso 5: Fotos y Finalización
-// Cambiamos 'photo' a 'photos' para que coincida con lo que suele enviar el dropzone/input
-router.post('/:id/photos', verifyToken, verifyRole(rolesAutorizados), upload.array('photos', 50), visitController.uploadPhoto);
+// CORRECCIÓN: Quitamos la 's'. Usamos simplemente 'upload' porque el middleware 
+// ya trae el .array('photo', 10) configurado por dentro.
+router.post('/:id/photos', verifyToken, verifyRole(rolesAutorizados), upload, visitController.uploadPhoto);
 
-// 7. Exportación
+// 7. Exportación y Finalización
 router.get('/:id/export-pdf', verifyToken, verifyRole(rolesAutorizados), visitController.exportPDF);
 router.get('/:id/export-xml', verifyToken, verifyRole(rolesAutorizados), visitController.exportXML);
 router.post('/:id/finalize', verifyToken, verifyRole(rolesAutorizados), visitController.finalizeVisit);
