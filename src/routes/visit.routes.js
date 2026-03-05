@@ -11,15 +11,11 @@ const visitController = require('../controllers/visit.controller');
 const verifyToken = require('../middleware/auth.middleware');
 const verifyRole = require('../middleware/role.middleware');
 
-// Definimos los roles autorizados (incluimos admin para evitar el 403)
+// Roles autorizados
 const rolesAutorizados = ["tecnico", "ceo", "admin"];
 
 /**
- * ===============================
  * AIRTABLE - CLIENTES PLANEADOS
- * ===============================
- * La dejamos pública temporalmente para evitar el error 401 
- * mientras se sincroniza el token del frontend.
  */
 const airtableService = require('../services/airtable.service');
 
@@ -27,62 +23,52 @@ router.get('/airtable/planeados', async (req, res) => {
   try {
     const records = await airtableService.getPlaneados();
     const clientes = records.map(record => ({
-  airtable_id: record.id,
-
-  cliente:
-    record.fields["Cliente"] ||
-    record.fields["Clientes"] ||
-    record.fields["Nombre"] ||
-    "Cliente Desconocido",
-
-  direccion:
-    record.fields["Dirección"] ||
-    record.fields["Direccion"] ||
-    "Dirección no disponible",
-
-  municipio: record.fields["Localidad"] || "",
-  provincia: record.fields["Provincia"] || ""
-  }));
-
+      airtable_id: record.id,
+      cliente: record.fields["Cliente"] || record.fields["Clientes"] || record.fields["Nombre"] || "Cliente Desconocido",
+      direccion: record.fields["Dirección"] || record.fields["Direccion"] || "Dirección no disponible",
+      municipio: record.fields["Localidad"] || "",
+      provincia: record.fields["Provincia"] || ""
+    }));
     res.json(clientes);
   } catch (error) {
     console.error("Error Airtable:", error);
     res.status(500).json({ error: 'Error consultando Airtable' });
   }
 });
+
 /**
- * =====================================================
- * RUTAS PROTEGIDAS DE VISITAS
- * =====================================================
+ * RUTAS DE VISITAS (Protegidas)
  */
 
-// Crear visita (Aquí es donde te daba el 403)
+// 1. Gestión base
 router.post('/', verifyToken, verifyRole(rolesAutorizados), visitController.createVisit);
-
-// Ver mis visitas
 router.get('/', verifyToken, verifyRole(rolesAutorizados), visitController.getMyVisits);
 
-// Datos del edificio
+// 2. Paso 1: Edificio
 router.put('/:id/building', verifyToken, verifyRole(rolesAutorizados), visitController.saveBuildingData);
 
-// Subida de fotos
-router.post('/:id/photos', verifyToken, verifyRole(rolesAutorizados), upload.array('photo', 50), visitController.uploadPhoto);
-// Envolvente, Ventanas e Instalaciones
+// 3. Paso 2: Envolvente
 router.post('/:id/envelope', verifyToken, verifyRole(rolesAutorizados), visitController.addEnvelopeElement);
 router.get('/:id/envelope', verifyToken, verifyRole(rolesAutorizados), visitController.getEnvelope);
 
+// 4. Paso 3: Ventanas
 router.post('/:id/windows', verifyToken, verifyRole(rolesAutorizados), visitController.addWindow);
 router.get('/:id/windows', verifyToken, verifyRole(rolesAutorizados), visitController.getWindows);
 
+// 5. Paso 4: Instalaciones
 router.post('/:id/installations', verifyToken, verifyRole(rolesAutorizados), visitController.addInstallation);
 router.get('/:id/installations', verifyToken, verifyRole(rolesAutorizados), visitController.getInstallations);
 
-// Exportación y Finalización
-router.get('/:id/export-xml', verifyToken, verifyRole(rolesAutorizados), visitController.exportXML);
+// 6. Paso 5: Fotos y Finalización
+// Cambiamos 'photo' a 'photos' para que coincida con lo que suele enviar el dropzone/input
+router.post('/:id/photos', verifyToken, verifyRole(rolesAutorizados), upload.array('photos', 50), visitController.uploadPhoto);
+
+// 7. Exportación
 router.get('/:id/export-pdf', verifyToken, verifyRole(rolesAutorizados), visitController.exportPDF);
+router.get('/:id/export-xml', verifyToken, verifyRole(rolesAutorizados), visitController.exportXML);
 router.post('/:id/finalize', verifyToken, verifyRole(rolesAutorizados), visitController.finalizeVisit);
 
-// Borrar visita (Solo CEO y Admin)
+// 8. Borrar
 router.delete('/:id', verifyToken, verifyRole(["ceo", "admin"]), visitController.deleteVisit);
 
 module.exports = router;
