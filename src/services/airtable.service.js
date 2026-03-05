@@ -12,8 +12,8 @@ const airtableApi = axios.create({
   }
 });
 
-// 1. Obtener registros con Estado = "4. Planeado"
-exports.getPlaneados = async () => {
+// 1. Obtener registros planeados
+async function getPlaneados() {
   try {
     const response = await airtableApi.get(`/${TABLE_NAME}`, {
       params: {
@@ -25,25 +25,31 @@ exports.getPlaneados = async () => {
     console.error('Error Airtable (getPlaneados):', error.response?.data || error.message);
     throw error;
   }
-};
+}
 
-// 2. Actualizar el estado de un registro
-exports.updateEstado = async (recordId, nuevoEstado) => {
+// 2. Actualizar estado
+async function updateEstado(recordId, nuevoEstado) {
   try {
     const response = await airtableApi.patch(`/${TABLE_NAME}/${recordId}`, {
       fields: {
-        Estado: nuevoEstado // Asegúrate que en Airtable la columna se llame "Estado"
+        Estado: nuevoEstado
       }
     });
+
     console.log(`Airtable: Registro ${recordId} actualizado a ${nuevoEstado} ✅`);
     return response.data;
+
   } catch (error) {
     console.error('Error Airtable (updateEstado):', error.response?.data || error.message);
     throw error;
   }
+}
+
+module.exports = {
+  getPlaneados,
+  updateEstado
 };
 
-// Logs de diagnóstico al arrancar el servidor en Render
 console.log('--- Diagnóstico Airtable ---');
 console.log('Base ID:', BASE_ID ? 'OK ✅' : 'FALTA ❌');
 console.log('Table Name:', TABLE_NAME ? 'OK ✅' : 'FALTA ❌');
