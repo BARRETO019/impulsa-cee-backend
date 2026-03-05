@@ -38,15 +38,27 @@ exports.saveBuildingData = async (req, res) => {
 // --- 3. ENVOLVENTE (POST /:id/envelope) ---
 exports.addEnvelopeElement = async (req, res) => {
   try {
-    const { tipo, nombre, superficie, orientacion, transmitancia, observaciones } = req.body;
-    const result = await pool.query(
-      `INSERT INTO visit_envelope (visit_id, tipo, nombre, superficie, orientacion, transmitancia, observaciones) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [req.params.id, tipo, nombre, superficie, orientacion, transmitancia || 0, observaciones]
-    );
+    const { tipo, nombre, superficie, orientacion } = req.body;
+    // Solo usamos los campos básicos que estamos seguros que existen en tu tabla
+    const query = `
+      INSERT INTO visit_envelope (visit_id, tipo, nombre, superficie, orientacion) 
+      VALUES ($1, $2, $3, $4) 
+      RETURNING *`;
+    
+    const result = await pool.query(query, [
+      req.params.id, 
+      tipo || 'Muro', 
+      nombre || 'Elemento', 
+      superficie || 0, 
+      orientacion || 'Norte'
+    ]);
+    
     res.status(201).json(result.rows[0]);
-  } catch (error) { res.status(500).json({ error: "Error guardando elemento" }); }
+  } catch (error) {
+    console.error("ERROR DETALLADO:", error); // Esto saldrá en tus logs de Render
+    res.status(500).json({ error: "Error en la base de datos", detalle: error.message });
+  }
 };
-
 exports.getEnvelope = async (req, res) => {
   const result = await pool.query(`SELECT * FROM visit_envelope WHERE visit_id = $1`, [req.params.id]);
   res.json(result.rows);
