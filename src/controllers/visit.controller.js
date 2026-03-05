@@ -204,11 +204,45 @@ exports.exportPDF = async (req, res) => {
 };
 
 exports.exportXML = async (req, res) => res.json({ message: "XML no implementado" });
+
+// Dentro de visit.controller.js
+
 exports.finalizeVisit = async (req, res) => {
-  await pool.query(`UPDATE visits SET estado = 'finalizada' WHERE id = $1`, [req.params.id]);
-  res.json({ message: "Finalizada" });
-};
-exports.deleteVisit = async (req, res) => {
-  await pool.query(`DELETE FROM visits WHERE id = $1`, [req.params.id]);
-  res.json({ message: "Borrada" });
+  try {
+    const { id } = req.params;
+    
+    // 1. Marcar como finalizada en Neon
+    await pool.query(`UPDATE visits SET estado = 'finalizada' WHERE id = $1`, [id]);
+
+    // 2. Obtener todos los datos para el PDF
+    const data = {
+      visit: (await pool.query(`SELECT * FROM visits WHERE id = $1`, [id])).rows[0],
+      building: (await pool.query(`SELECT * FROM visit_building WHERE visit_id = $1`, [id])).rows[0],
+      envelope: (await pool.query(`SELECT * FROM visit_envelope WHERE visit_id = $1`, [id])).rows,
+      windows: (await pool.query(`SELECT * FROM visit_windows WHERE visit_id = $1`, [id])).rows,
+      installations: (await pool.query(`SELECT * FROM visit_installations WHERE visit_id = $1`, [id])).rows,
+      photos: (await pool.query(`SELECT * FROM visit_photos WHERE visit_id = $1`, [id])).rows
+    };
+
+    // 3. Generar PDF localmente (temporal)
+    const pdfPath = await pdfService.createPDFFile(data); // Necesitarás crear esta función en tu pdfService
+
+    // 4. Obtener la carpeta de Drive de esta visita
+    const folderId = await driveService.getOrCreateClientFolder(`Visita_${id}`);
+
+    // 5. SUBIR PDF A DRIVE
+    await driveService.uploadFile(pdfPath, `Informe_Visita_${id}.pdf`, folderId);
+
+    // 6. (Opcional) Hacer lo mismo con el XML si ya tienes el servicio listo
+    // const xmlPath = await xmlService.createXMLFile(data);
+    // await driveService.uploadFile(xmlPath, `Datos_Visita_${id}.xml`, folderId);
+
+    // 7. Limpiar archivos temporales del servidor
+    fs.unlinkSync(pdfPath);
+
+    res.json({ message: "Visita finalizada y documentos subidos a Drive" });
+  } catch (error) {
+    console.error("Error al finalizar:", error);
+    res.status(500).json({ error: "No se pudo finalizar o subir documentos" });
+  }
 };
