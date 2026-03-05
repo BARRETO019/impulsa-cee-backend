@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-// Middleware de subida de archivos
+// Middleware de subida de archivos (Configurado para .array('photo'))
 const upload = require('../middleware/upload.middleware');
 
 // Controlador de visitas
@@ -40,12 +40,6 @@ router.get('/airtable/planeados', async (req, res) => {
  * RUTAS DE VISITAS (Protegidas)
  */
 
-// ... (resto del código anterior igual)
-
-/**
- * RUTAS DE VISITAS (Protegidas)
- */
-
 // 1. Gestión base
 router.post('/', verifyToken, verifyRole(rolesAutorizados), visitController.createVisit);
 router.get('/', verifyToken, verifyRole(rolesAutorizados), visitController.getMyVisits);
@@ -66,8 +60,10 @@ router.post('/:id/installations', verifyToken, verifyRole(rolesAutorizados), vis
 router.get('/:id/installations', verifyToken, verifyRole(rolesAutorizados), visitController.getInstallations);
 
 // 6. Paso 5: Fotos y Finalización
-// CORRECCIÓN: Quitamos la 's'. Usamos simplemente 'upload' porque el middleware 
-// ya trae el .array('photo', 10) configurado por dentro.
+/** * CAMBIO CLAVE: 
+ * Usamos 'upload' directamente porque el middleware ya tiene el .array('photo') 
+ * configurado para que coincida con el Drive y el Frontend.
+ */
 router.post('/:id/photos', verifyToken, verifyRole(rolesAutorizados), upload, visitController.uploadPhoto);
 
 // 7. Exportación y Finalización
