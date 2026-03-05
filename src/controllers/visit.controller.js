@@ -1,4 +1,5 @@
 const driveService = require('../services/drive.service'); 
+const airtableService = require('../services/airtable.service');
 const fs = require('fs');
 const path = require('path');
 const pool = require('../config/db'); 
@@ -7,7 +8,8 @@ const pdfService = require('../services/pdf.service');
 // --- 1. GESTIÓN DE VISITAS ---
 exports.createVisit = async (req, res) => {
   try {
-    const { cliente, municipio, provincia, direccion } = req.body;
+    const { cliente, municipio, provincia, direccion, airtable_id } = req.body;
+    
     const query = `INSERT INTO visits (tecnico_id, direccion, municipio, provincia, estado, superficie) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
     const result = await pool.query(query, [
       req.user.id, 
@@ -17,8 +19,23 @@ exports.createVisit = async (req, res) => {
       'borrador',
       0
     ]);
-    res.status(201).json(result.rows[0]);
-  } catch (error) { res.status(500).json({ error: error.message }); }
+
+    const newVisit = result.rows[0];
+
+    // Actualizar Airtable a "5. En curso"
+    if (airtable_id && airtableService.updateEstado) {
+      try {
+        await airtableService.updateEstado(airtable_id, "5. En curso");
+        console.log(`Airtable ${airtable_id} actualizado a En curso ✅`);
+      } catch (atError) {
+        console.error("Error Airtable (No bloqueante):", atError.message);
+      }
+    }
+
+    res.status(201).json(newVisit);
+  } catch (error) { 
+    res.status(500).json({ error: error.message }); 
+  }
 };
 
 exports.getMyVisits = async (req, res) => {
@@ -129,14 +146,7 @@ exports.uploadPhoto = async (req, res) => {
 exports.exportPDF = async (req, res) => {
   try {
     const id = req.params.id;
-    const data = {
-      visit: (await pool.query(`SELECT * FROM visits WHERE id = $1`, [id])).rows[0],
-      building: (await pool.query(`SELECT * FROM visit_building WHERE visit_id = $1`, [id])).rows[0],
-      envelope: (await pool.query(`SELECT * FROM visit_envelope WHERE visit_id = $1`, [id])).rows,
-      windows: (await pool.query(`SELECT * FROM visit_windows WHERE visit_id = $1`, [id])).rows,
-      installations: (await pool.query(`SELECT * FROM visit_installations WHERE visit_id = $1`, [id])).rows,
-      photos: (await pool.query(`SELECT * FROM visit_photos WHERE visit_id = $1`, [id])).rows
-    };
+    const data = await getFullVisitData(id);
     pdfService.generatePDF(res, data);
   } catch (error) { res.status(500).json({ error: "Error PDF" }); }
 };
@@ -146,30 +156,18 @@ exports.exportXML = async (req, res) => res.json({ message: "XML no implementado
 exports.finalizeVisit = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // 1. Marcar como finalizada en Neon
     await pool.query(`UPDATE visits SET estado = 'finalizada' WHERE id = $1`, [id]);
+    const data = await getFullVisitData(id);
 
-    // 2. Obtener datos
-    const data = {
-      visit: (await pool.query(`SELECT * FROM visits WHERE id = $1`, [id])).rows[0],
-      building: (await pool.query(`SELECT * FROM visit_building WHERE visit_id = $1`, [id])).rows[0],
-      envelope: (await pool.query(`SELECT * FROM visit_envelope WHERE visit_id = $1`, [id])).rows,
-      windows: (await pool.query(`SELECT * FROM visit_windows WHERE visit_id = $1`, [id])).rows,
-      installations: (await pool.query(`SELECT * FROM visit_installations WHERE visit_id = $1`, [id])).rows,
-      photos: (await pool.query(`SELECT * FROM visit_photos WHERE visit_id = $1`, [id])).rows
-    };
-
-    // 3. Obtener carpeta de Drive
     const folderId = await driveService.getOrCreateClientFolder(`Visita_${id}`);
 
-    // 4. PDF a Drive
+    // PDF a Drive
     const pdfPath = path.join(__dirname, `../../temp_report_${id}.pdf`);
-    await pdfService.createPDFFile(data, pdfPath); // Asegúrate de que esta función guarde el archivo en pdfPath
+    await pdfService.createPDFFile(data, pdfPath);
     await driveService.uploadFile(pdfPath, `Informe_Visita_${id}.pdf`, folderId);
     if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
 
-    // 5. XML a Drive (Simulado si no tienes servicio)
+    // XML a Drive
     const xmlPath = path.join(__dirname, `../../temp_data_${id}.xml`);
     const xmlContent = `<?xml version="1.0" encoding="UTF-8"?><visita id="${id}"><estado>finalizada</estado></visita>`;
     fs.writeFileSync(xmlPath, xmlContent);
@@ -179,9 +177,20 @@ exports.finalizeVisit = async (req, res) => {
     res.json({ message: "Visita finalizada y documentos subidos a Drive" });
   } catch (error) {
     console.error("Error al finalizar:", error);
-    res.status(500).json({ error: "No se pudo finalizar o subir documentos" });
+    res.status(500).json({ error: "No se pudo finalizar" });
   }
 };
+
+// Función auxiliar para obtener datos
+async function getFullVisitData(id) {
+  const visit = (await pool.query(`SELECT * FROM visits WHERE id = $1`, [id])).rows[0];
+  const building = (await pool.query(`SELECT * FROM visit_building WHERE visit_id = $1`, [id])).rows[0];
+  const envelope = (await pool.query(`SELECT * FROM visit_envelope WHERE visit_id = $1`, [id])).rows;
+  const windows = (await pool.query(`SELECT * FROM visit_windows WHERE visit_id = $1`, [id])).rows;
+  const installations = (await pool.query(`SELECT * FROM visit_installations WHERE visit_id = $1`, [id])).rows;
+  const photos = (await pool.query(`SELECT * FROM visit_photos WHERE visit_id = $1`, [id])).rows;
+  return { visit, building, envelope, windows, installations, photos };
+}
 
 // --- 8. ELIMINAR ---
 exports.deleteVisit = async (req, res) => {

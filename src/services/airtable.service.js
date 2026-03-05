@@ -1,5 +1,5 @@
 const driveService = require('../services/drive.service'); 
-const airtableService = require('../services/airtable.service'); // IMPORTADO
+const airtableService = require('../services/airtable.service');
 const fs = require('fs');
 const path = require('path');
 const pool = require('../config/db'); 
@@ -8,10 +8,9 @@ const pdfService = require('../services/pdf.service');
 // --- 1. GESTIÓN DE VISITAS ---
 exports.createVisit = async (req, res) => {
   try {
-    // Recibimos airtable_id desde el frontend
     const { cliente, municipio, provincia, direccion, airtable_id } = req.body;
     
-    // A. Insertar en base de datos Neon
+    // A. Insertar en Neon
     const query = `INSERT INTO visits (tecnico_id, direccion, municipio, provincia, estado, superficie) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
     const result = await pool.query(query, [
       req.user.id, 
@@ -24,7 +23,7 @@ exports.createVisit = async (req, res) => {
 
     const newVisit = result.rows[0];
 
-    // B. Sincronizar con Airtable: Pasar a "5. En curso"
+    // B. Sincronizar con Airtable: "5. En curso"
     if (airtable_id) {
       try {
         console.log(`Actualizando Airtable registro: ${airtable_id}`);
@@ -158,18 +157,22 @@ exports.exportPDF = async (req, res) => {
 exports.finalizeVisit = async (req, res) => {
   try {
     const { id } = req.params;
+    // 1. Marcar como finalizada
     await pool.query(`UPDATE visits SET estado = 'finalizada' WHERE id = $1`, [id]);
+    
+    // 2. Obtener todos los datos
     const data = await getFullVisitData(id);
-
+    
+    // 3. Drive Folder
     const folderId = await driveService.getOrCreateClientFolder(`Visita_${id}`);
 
-    // PDF a Drive
+    // 4. PDF a Drive
     const pdfPath = path.join(__dirname, `../../temp_report_${id}.pdf`);
     await pdfService.createPDFFile(data, pdfPath);
     await driveService.uploadFile(pdfPath, `Informe_Visita_${id}.pdf`, folderId);
     if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
 
-    // XML a Drive
+    // 5. XML a Drive
     const xmlPath = path.join(__dirname, `../../temp_data_${id}.xml`);
     const xmlContent = `<?xml version="1.0" encoding="UTF-8"?><visita id="${id}"><estado>finalizada</estado></visita>`;
     fs.writeFileSync(xmlPath, xmlContent);
@@ -185,13 +188,20 @@ exports.finalizeVisit = async (req, res) => {
 
 // Función auxiliar para no repetir queries
 async function getFullVisitData(id) {
+  const visit = await pool.query(`SELECT * FROM visits WHERE id = $1`, [id]);
+  const building = await pool.query(`SELECT * FROM visit_building WHERE visit_id = $1`, [id]);
+  const envelope = await pool.query(`SELECT * FROM visit_envelope WHERE visit_id = $1`, [id]);
+  const windows = await pool.query(`SELECT * FROM visit_windows WHERE visit_id = $1`, [id]);
+  const installations = await pool.query(`SELECT * FROM visit_installations WHERE visit_id = $1`, [id]);
+  const photos = await pool.query(`SELECT * FROM visit_photos WHERE visit_id = $1`, [id]);
+
   return {
-    visit: (await pool.query(`SELECT * FROM visits WHERE id = $1`, [id])).rows[0],
-    building: (await pool.query(`SELECT * FROM visit_building WHERE visit_id = $1`, [id])).rows[0],
-    envelope: (await pool.query(`SELECT * FROM visit_envelope WHERE visit_id = $1`, [id])).rows,
-    windows: (await pool.query(`SELECT * FROM visit_windows WHERE visit_id = $1`, [id])).rows,
-    installations: (await pool.query(`SELECT * FROM visit_installations WHERE visit_id = $1`, [id])).rows,
-    photos: (await pool.query(`SELECT * FROM visit_photos WHERE visit_id = $1`, [id])).rows
+    visit: visit.rows[0],
+    building: building.rows[0],
+    envelope: envelope.rows,
+    windows: windows.rows,
+    installations: installations.rows,
+    photos: photos.rows
   };
 }
 
