@@ -118,6 +118,32 @@ exports.finalizeVisit = async (req, res) => {
   res.json({ message: "Finalizada" });
 };
 
+// --- AÑADIR ELEMENTOS DE ENVOLVENTE (Paso 2) ---
+exports.addEnvelopeElement = async (req, res) => {
+  try {
+    const { tipo, nombre, superficie, orientacion, transmitancia, observaciones } = req.body;
+    const result = await pool.query(
+      `INSERT INTO visit_envelope (visit_id, tipo, nombre, superficie, orientacion, transmitancia, observaciones) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [req.params.id, tipo, nombre, superficie, orientacion, transmitancia || 0, observaciones]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error("Error en addEnvelopeElement:", error);
+    res.status(500).json({ error: "Error al guardar el elemento de envolvente" });
+  }
+};
+
+// --- OBTENER ELEMENTOS PARA LA LISTA ---
+exports.getEnvelope = async (req, res) => {
+  try {
+    const result = await pool.query(`SELECT * FROM visit_envelope WHERE visit_id = $1`, [req.params.id]);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: "Error al obtener elementos" });
+  }
+};
+
 exports.deleteVisit = async (req, res) => {
   await pool.query(`DELETE FROM visits WHERE id = $1`, [req.params.id]);
   res.json({ message: "Borrada" });
