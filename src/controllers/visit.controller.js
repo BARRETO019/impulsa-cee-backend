@@ -64,36 +64,73 @@ exports.getEnvelope = async (req, res) => {
   res.json(result.rows);
 };
 
-// --- 4. VENTANAS (Ajustado a StepWindows) ---
+// --- 4. VENTANAS (Corregido para el Paso 3 del Wizard) ---
 exports.addWindow = async (req, res) => {
   try {
+    const { id } = req.params;
     const { nombre, marco, vidrio, superficie } = req.body;
-    const result = await pool.query(
-      `INSERT INTO visit_windows (visit_id, nombre, superficie, orientacion, marco, vidrio) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [req.params.id, nombre, superficie || 0, 'Norte', marco, vidrio]
-    );
+
+    // Ajustamos la consulta para que coincida con la estructura de Neon
+    // Tu tabla espera: visit_id, tipo (o nombre), superficie, orientacion, marco, vidrio
+    const query = `
+      INSERT INTO visit_windows (visit_id, nombre, superficie, orientacion, marco, vidrio) 
+      VALUES ($1, $2, $3, $4, $5, $6) 
+      RETURNING *`;
+    
+    // Si el Wizard no envía orientación, ponemos 'N/A' para evitar fallos de nulidad
+    const result = await pool.query(query, [
+      id, 
+      nombre || "Ventana", 
+      parseFloat(superficie) || 0, 
+      "N/A", 
+      marco || "No especificado", 
+      vidrio || "No especificado"
+    ]);
+
     res.status(201).json(result.rows[0]);
-  } catch (error) { res.status(500).json({ error: "Error en ventana" }); }
+  } catch (error) {
+    console.error("Error detallado en Windows:", error);
+    res.status(500).json({ error: "Error al guardar la ventana" });
+  }
 };
 
 exports.getWindows = async (req, res) => {
-  const result = await pool.query(`SELECT * FROM visit_windows WHERE visit_id = $1`, [req.params.id]);
-  res.json(result.rows);
+  try {
+    const result = await pool.query(`SELECT * FROM visit_windows WHERE visit_id = $1`, [req.params.id]);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: "Error obteniendo ventanas" });
+  }
 };
 
 // --- 5. INSTALACIONES (Ajustado a StepInstallations) ---
+// --- 5. INSTALACIONES (Pre-corregido para el Paso 4) ---
 exports.addInstallation = async (req, res) => {
   try {
     const { tipo, energia, marca_modelo, potencia, ano_aprox } = req.body;
-    // Mapeamos lo que viene del Wizard a lo que tienes en Neon
+    
+    // Tu tabla en Neon usa: combustible (no energia), generador (no marca_modelo), 
+    // potencia_nominal (no potencia), ano_instalacion (no ano_aprox)
     const query = `
       INSERT INTO visit_installations (visit_id, tipo, combustible, generador, potencia_nominal, ano_instalacion) 
-      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
-    const result = await pool.query(query, [req.params.id, tipo, energia, marca_modelo, potencia || 0, ano_aprox || 0]);
+      VALUES ($1, $2, $3, $4, $5, $6) 
+      RETURNING *`;
+      
+    const result = await pool.query(query, [
+      req.params.id, 
+      tipo, 
+      energia || "No especificado", 
+      marca_modelo || "Genérico", 
+      parseFloat(potencia) || 0, 
+      parseInt(ano_aprox) || 0
+    ]);
+    
     res.status(201).json(result.rows[0]);
-  } catch (error) { res.status(500).json({ error: "Error en instalación" }); }
+  } catch (error) {
+    console.error("Error en Instalaciones:", error);
+    res.status(500).json({ error: "Error al guardar instalación" });
+  }
 };
-
 exports.getInstallations = async (req, res) => {
   const result = await pool.query(`SELECT * FROM visit_installations WHERE visit_id = $1`, [req.params.id]);
   res.json(result.rows);
