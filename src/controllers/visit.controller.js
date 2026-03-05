@@ -18,7 +18,7 @@ exports.getMyVisits = async (req, res) => {
   } catch (error) { res.status(500).json({ error: "Error obteniendo visitas" }); }
 };
 
-// --- 2. DATOS EDIFICIO (PUT /:id/building) ---
+// --- 2. DATOS EDIFICIO (Paso 1) ---
 exports.saveBuildingData = async (req, res) => {
   try {
     const { id } = req.params;
@@ -35,36 +35,39 @@ exports.saveBuildingData = async (req, res) => {
   } catch (error) { res.status(500).json({ error: "Error en edificio" }); }
 };
 
-// --- 3. ENVOLVENTE (POST /:id/envelope) ---
+// --- 3. ENVOLVENTE (Paso 2) - AQUÍ ESTABA EL ERROR 500 ---
 exports.addEnvelopeElement = async (req, res) => {
   try {
-    const { tipo, nombre, superficie, orientacion } = req.body;
-    // Solo usamos los campos básicos que estamos seguros que existen en tu tabla
+    const { tipo, nombre, superficie, orientacion, transmitancia, observaciones } = req.body;
+    // Corregido: 7 columnas y 7 valores exactos
     const query = `
-      INSERT INTO visit_envelope (visit_id, tipo, nombre, superficie, orientacion) 
-      VALUES ($1, $2, $3, $4) 
-      RETURNING *`;
+      INSERT INTO visit_envelope (visit_id, tipo, nombre, superficie, orientacion, transmitancia, observaciones) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`;
     
-    const result = await pool.query(query, [
+    const values = [
       req.params.id, 
       tipo || 'Muro', 
       nombre || 'Elemento', 
       superficie || 0, 
-      orientacion || 'Norte'
-    ]);
-    
+      orientacion || 'Norte',
+      transmitancia || 0,
+      observaciones || ''
+    ];
+
+    const result = await pool.query(query, values);
     res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error("ERROR DETALLADO:", error); // Esto saldrá en tus logs de Render
-    res.status(500).json({ error: "Error en la base de datos", detalle: error.message });
+  } catch (error) { 
+    console.error("ERROR EN BD:", error);
+    res.status(500).json({ error: "Error al guardar elemento" }); 
   }
 };
+
 exports.getEnvelope = async (req, res) => {
   const result = await pool.query(`SELECT * FROM visit_envelope WHERE visit_id = $1`, [req.params.id]);
   res.json(result.rows);
 };
 
-// --- 4. VENTANAS (POST /:id/windows) ---
+// --- 4. VENTANAS (Paso 3) ---
 exports.addWindow = async (req, res) => {
   try {
     const { nombre, superficie, orientacion, marco, vidrio } = req.body;
@@ -73,7 +76,7 @@ exports.addWindow = async (req, res) => {
       [req.params.id, nombre, superficie, orientacion, marco, vidrio]
     );
     res.status(201).json(result.rows[0]);
-  } catch (error) { res.status(500).json({ error: "Error guardando ventana" }); }
+  } catch (error) { res.status(500).json({ error: "Error en ventana" }); }
 };
 
 exports.getWindows = async (req, res) => {
@@ -81,7 +84,7 @@ exports.getWindows = async (req, res) => {
   res.json(result.rows);
 };
 
-// --- 5. INSTALACIONES (POST /:id/installations) ---
+// --- 5. INSTALACIONES (Paso 4) ---
 exports.addInstallation = async (req, res) => {
   try {
     const { tipo, energia, marca_modelo, potencia, ano_aprox } = req.body;
@@ -90,7 +93,7 @@ exports.addInstallation = async (req, res) => {
       [req.params.id, tipo, energia, marca_modelo, potencia || 0, ano_aprox]
     );
     res.status(201).json(result.rows[0]);
-  } catch (error) { res.status(500).json({ error: "Error guardando instalación" }); }
+  } catch (error) { res.status(500).json({ error: "Error en instalación" }); }
 };
 
 exports.getInstallations = async (req, res) => {
@@ -124,8 +127,6 @@ exports.exportPDF = async (req, res) => {
     pdfService.generatePDF(res, { visit, building, envelope, windows, installations, photos });
   } catch (error) { res.status(500).json({ error: "Error PDF" }); }
 };
-
-exports.exportXML = async (req, res) => { res.send("XML pronto..."); };
 
 exports.finalizeVisit = async (req, res) => {
   await pool.query(`UPDATE visits SET estado = 'finalizada' WHERE id = $1`, [req.params.id]);
