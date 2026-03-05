@@ -35,11 +35,10 @@ exports.saveBuildingData = async (req, res) => {
   } catch (error) { res.status(500).json({ error: "Error en edificio" }); }
 };
 
-// --- 3. ENVOLVENTE (Paso 2) - AQUÍ ESTABA EL ERROR 500 ---
+// --- 3. ENVOLVENTE (Paso 2) ---
 exports.addEnvelopeElement = async (req, res) => {
   try {
     const { tipo, nombre, superficie, orientacion, transmitancia, observaciones } = req.body;
-    // Corregido: 7 columnas y 7 valores exactos
     const query = `
       INSERT INTO visit_envelope (visit_id, tipo, nombre, superficie, orientacion, transmitancia, observaciones) 
       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`;
@@ -101,11 +100,12 @@ exports.getInstallations = async (req, res) => {
   res.json(result.rows);
 };
 
-// --- 6. FOTOS Y PDF ---
+// --- 6. FOTOS Y EXPORTACIÓN ---
 exports.uploadPhoto = async (req, res) => {
   try {
     const inserted = [];
-    for (const file of req.files) {
+    const files = req.files || [];
+    for (const file of files) {
       const result = await pool.query(`INSERT INTO visit_photos (visit_id, filename, filepath, tipo) VALUES ($1,$2,$3,$4) RETURNING *`, 
       [req.params.id, file.filename, file.path, req.body.tipo || "general"]);
       inserted.push(result.rows[0]);
@@ -126,6 +126,11 @@ exports.exportPDF = async (req, res) => {
 
     pdfService.generatePDF(res, { visit, building, envelope, windows, installations, photos });
   } catch (error) { res.status(500).json({ error: "Error PDF" }); }
+};
+
+// ESTA FUNCIÓN FALTABA Y HACÍA QUE EL SERVIDOR NO ARRANCARA
+exports.exportXML = async (req, res) => {
+  res.json({ message: "Exportación XML no implementada aún" });
 };
 
 exports.finalizeVisit = async (req, res) => {
