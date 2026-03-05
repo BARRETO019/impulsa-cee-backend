@@ -3,201 +3,119 @@ const fs = require('fs');
 const path = require('path');
 
 exports.generatePDF = (res, data) => {
+  const { visit, building, envelope, windows, installations, photos } = data;
+  const doc = new PDFDocument({ margin: 50, size: 'A4' });
 
-  const { visit, building, envelope, windows, installations } = data;
-
-  const doc = new PDFDocument({ margin: 50 });
-
+  // Configuración de respuesta
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader(
-    'Content-Disposition',
-    `attachment; filename=visita_${visit.id}.pdf`
-  );
-
+  res.setHeader('Content-Disposition', `attachment; filename=Informe_CEE_${visit.id}.pdf`);
   doc.pipe(res);
 
-  // ===============================
-  // CABECERA
-  // ===============================
-
+  // --- CABECERA (Logo y Título) ---
   const logoPath = path.join(__dirname, '../assets/logo.png');
-
-  try {
-    doc.image(logoPath, 50, 40, { width: 80 });
-  } catch {
-    console.log("Logo no encontrado");
+  if (fs.existsSync(logoPath)) {
+    doc.image(logoPath, 50, 45, { width: 60 });
   }
 
-  doc.fontSize(18).text('IMPULSA ENERGÍA', 150, 45);
-  doc.fontSize(12).text('Informe Técnico CEE', 150, 65);
-
-  doc.moveDown(3);
-
-  doc.moveTo(50, 110).lineTo(550, 110).stroke();
-
-  doc.fontSize(10)
-     .text(`Fecha del informe: ${new Date().toLocaleDateString()}`, { align: 'right' });
-
+  doc.fillColor('#333333')
+     .fontSize(18).text('IMPULSA ENERGÍA', 120, 50, { b: true })
+     .fontSize(12).text('Informe Técnico CEE', 120, 70);
+  
+  doc.moveTo(50, 100).lineTo(550, 100).stroke('#cccccc');
   doc.moveDown(2);
 
-  // ===============================
-  // DATOS GENERALES
-  // ===============================
-
-  doc.fontSize(14).text('Datos Generales', { underline: true });
+  // --- 1. DATOS GENERALES ---
+  doc.fontSize(14).fillColor('#000000').text('Datos Generales', { underline: true });
+  doc.moveDown(0.5);
+  doc.fontSize(10).fillColor('#333333')
+     .text(`Dirección: ${visit.direccion || 'Cliente Sin Nombre'}`)
+     .text(`Municipio: ${visit.municipio || 'N/A'}`)
+     .text(`Provincia: ${building?.provincia || visit.provincia || 'N/A'}`)
+     .text(`Año Construcción: ${building?.ano_construccion || 'N/A'}`)
+     .text(`Zona Climática: ${building?.zona_climatica || 'N/A'}`)
+     .text(`Superficie Habitable: ${building?.superficie_habitable || '0'} m2`);
   doc.moveDown();
 
-  doc.fontSize(12);
-  doc.text(`Dirección: ${visit.direccion || 'No especificado'}`);
-  doc.text(`Municipio: ${visit.municipio || 'No especificado'}`);
-  doc.text(`Provincia: ${visit.provincia || 'No especificado'}`);
-  doc.text(`Año Construcción: ${visit.ano_construccion || 'No especificado'}`);
-  doc.text(`Zona Climática: ${building?.zona_climatica || 'No especificado'}`);
-  doc.text(`Superficie Habitable: ${building?.superficie_habitable || 'No especificado'} m2`);
-
-  doc.moveDown(2);
-
-  // ===============================
-  // ENVOLVENTE
-  // ===============================
-
-  doc.fontSize(14).text('Envolvente Térmica', { underline: true });
-  doc.moveDown();
-
-  envelope.forEach(e => {
-
-    doc.fontSize(12)
-      .text(`${e.tipo || 'Elemento'} - ${e.nombre || ''}`)
-      .text(`Superficie: ${e.superficie || 'No especificado'} m2`)
-      .text(`Orientación: ${e.orientacion || 'No especificado'}`)
-      .text(`Transmitancia: ${e.transmitancia || 'No especificado'}`)
-      .moveDown();
-
-  });
-
-  // ===============================
-  // HUECOS
-  // ===============================
-
-  doc.fontSize(14).text('Huecos (Ventanas)', { underline: true });
-  doc.moveDown();
-
-  windows.forEach(w => {
-
-    doc.fontSize(12)
-      .text(`${w.nombre || 'Ventana'}`)
-      .text(`Superficie: ${w.superficie || 'No especificado'} m2`)
-      .text(`Marco: ${w.marco || 'No especificado'}`)
-      .text(`Vidrio: ${w.vidrio || 'No especificado'}`)
-      .moveDown();
-
-  });
-
-  // ===============================
-  // INSTALACIONES
-  // ===============================
-
-  doc.fontSize(14).text('Instalaciones Térmicas', { underline: true });
-  doc.moveDown();
-
-  installations.forEach(i => {
-
-  doc.fontSize(12)
-    .text(`${i.tipo || 'Equipo'} - ${i.generador || 'No especificado'}`)
-    .text(`Combustible: ${i.combustible || 'No especificado'}`)
-    .text(`Potencia: ${i.potencia_nominal || 'No especificado'} kW`)
-    .text(`Rendimiento: ${i.rendimiento_estacional || 'No especificado'}`)
-    .text(`Año instalación: ${i.ano_instalacion || 'No especificado'}`)
-    .moveDown();
-
-});
-
-  // ===============================
-  // FOTOS
-  // ===============================
-
-  doc.addPage();
-  doc.fontSize(16).text('Reportaje Fotográfico', { align: 'center' });
-  doc.moveDown(2);
-
-  const photosPath = path.join(
-    __dirname,
-    '../../uploads/visits',
-    visit.id.toString()
-  );
-
-  if (fs.existsSync(photosPath)) {
-
-    const files = fs.readdirSync(photosPath);
-
-    files.forEach(file => {
-
-      const imagePath = path.join(photosPath, file);
-
-      try {
-
-        doc.image(imagePath, {
-          fit: [400, 300],
-          align: 'center'
-        });
-
-        doc.moveDown(2);
-
-      } catch {
-        console.log("Error cargando imagen:", file);
-      }
-
-    });
-
+  // --- 2. ENVOLVENTE (Step 2) ---
+  renderSectionHeader(doc, '2. Envolvente Térmica');
+  if (!envelope || envelope.length === 0) {
+    doc.fontSize(10).text('No se han registrado elementos de envolvente.');
   } else {
-
-    doc.fontSize(12).text('No hay fotografías disponibles.');
-
+    envelope.forEach(e => {
+      doc.fontSize(10).fillColor('#000').text(`• ${e.tipo}`, { b: true });
+      doc.fillColor('#444').text(`  Superficie: ${e.superficie} m2 | Orientación: ${e.orientacion || 'N/A'}`);
+      if (e.observaciones) doc.fontSize(9).text(`  Obs: ${e.observaciones}`);
+      doc.moveDown(0.2);
+    });
   }
-
-  doc.end();
-
-};
-exports.generatePDFToFile = (filePath, data) => {
-
-  const { visit, building, envelope, windows, installations } = data;
-
-  const PDFDocument = require('pdfkit');
-  const fs = require('fs');
-  const path = require('path');
-
-  const doc = new PDFDocument({ margin: 50 });
-
-  doc.pipe(fs.createWriteStream(filePath));
-
-  const logoPath = path.join(__dirname, '../assets/logo.png');
-
-  try {
-    doc.image(logoPath, 50, 40, { width: 80 });
-  } catch {
-    console.log("Logo no encontrado");
-  }
-
-  doc.fontSize(18).text('IMPULSA ENERGÍA', 150, 45);
-  doc.fontSize(12).text('Informe Técnico CEE', 150, 65);
-
-  doc.moveDown(3);
-
-  doc.moveTo(50, 110).lineTo(550, 110).stroke();
-
-  doc.moveDown(2);
-
-  doc.fontSize(14).text('Datos Generales', { underline: true });
   doc.moveDown();
 
-  doc.fontSize(12);
-  doc.text(`Dirección: ${visit.direccion || ''}`);
-  doc.text(`Municipio: ${visit.municipio || ''}`);
-  doc.text(`Provincia: ${visit.provincia || ''}`);
-  doc.text(`Año Construcción: ${visit.ano_construccion || ''}`);
-  doc.text(`Zona Climática: ${building?.zona_climatica || ''}`);
-  doc.text(`Superficie Habitable: ${building?.superficie_habitable || ''}`);
+  // --- 3. HUECOS / VENTANAS (Step 3) ---
+  renderSectionHeader(doc, '3. Huecos y Acristalamientos');
+  if (!windows || windows.length === 0) {
+    doc.fontSize(10).text('No se han registrado ventanas.');
+  } else {
+    windows.forEach(w => {
+      doc.fontSize(10).fillColor('#000').text(`• ${w.nombre || 'Ventana'}`, { b: true });
+      doc.fillColor('#444').text(`  ${w.superficie} m2 | Vidrio: ${w.vidrio} | Marco: ${w.marco}`);
+      doc.moveDown(0.2);
+    });
+  }
+  doc.moveDown();
+
+  // --- 4. INSTALACIONES (Step 4) ---
+  renderSectionHeader(doc, '4. Instalaciones Térmicas');
+  if (!installations || installations.length === 0) {
+    doc.fontSize(10).text('No se han registrado instalaciones.');
+  } else {
+    installations.forEach(i => {
+      doc.fontSize(10).fillColor('#000').text(`• ${i.tipo}`, { b: true });
+      doc.fillColor('#444').text(`  Equipo: ${i.generador || i.marca_modelo || 'N/A'} | Potencia: ${i.potencia_nominal || i.potencia || '0'} kW`);
+      doc.text(`  Combustible: ${i.combustible || i.energia} | Año: ${i.ano_instalacion || i.ano_aprox || 'N/A'}`);
+      doc.moveDown(0.2);
+    });
+  }
+
+  // --- 5. FOTOS (Step 5) ---
+  if (photos && photos.length > 0) {
+    doc.addPage();
+    renderSectionHeader(doc, 'Anexo Fotográfico');
+    doc.moveDown();
+
+    let x = 50;
+    let y = doc.y;
+
+    photos.forEach((photo, index) => {
+      // Ajuste de la ruta según tu estructura de carpetas
+      const photoPath = path.join(__dirname, '../../', photo.filepath);
+      
+      if (fs.existsSync(photoPath)) {
+        try {
+          doc.image(photoPath, x, y, { width: 230, height: 170 });
+          doc.fontSize(8).text(photo.tipo || 'Imagen', x, y + 175);
+          
+          if (index % 2 === 0) {
+            x = 310; // Segunda columna
+          } else {
+            x = 50; // Nueva fila
+            y += 200;
+          }
+
+          if (y > 650) {
+            doc.addPage();
+            y = 50;
+          }
+        } catch (e) { console.error("Error al insertar imagen:", e); }
+      }
+    });
+  }
 
   doc.end();
-
 };
+
+// Función auxiliar para títulos de sección estéticos
+function renderSectionHeader(doc, title) {
+  doc.rect(50, doc.y, 500, 18).fill('#f2f2f2');
+  doc.fillColor('#000').fontSize(11).text(title, 55, doc.y - 14, { b: true });
+  doc.moveDown(0.5);
+}
