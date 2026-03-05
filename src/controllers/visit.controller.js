@@ -156,25 +156,16 @@ exports.exportXML = async (req, res) => res.json({ message: "XML no implementado
 exports.finalizeVisit = async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Marcar visita como finalizada
     await pool.query(`UPDATE visits SET estado = 'finalizada' WHERE id = $1`, [id]);
-    const data = await getFullVisitData(id);
 
-    const folderId = await driveService.getOrCreateClientFolder(`Visita_${id}`);
+    // Responder inmediatamente al usuario
+    res.json({ message: "Visita finalizada. Generando documentos..." });
 
-    // PDF a Drive
-    const pdfPath = path.join(__dirname, `../../temp_report_${id}.pdf`);
-    await pdfService.createPDFFile(data, pdfPath);
-    await driveService.uploadFile(pdfPath, `Informe_Visita_${id}.pdf`, folderId);
-    if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
+    // Generar documentos en segundo plano
+    generateDocumentsInBackground(id);
 
-    // XML a Drive
-    const xmlPath = path.join(__dirname, `../../temp_data_${id}.xml`);
-    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?><visita id="${id}"><estado>finalizada</estado></visita>`;
-    fs.writeFileSync(xmlPath, xmlContent);
-    await driveService.uploadFile(xmlPath, `Datos_Visita_${id}.xml`, folderId);
-    if (fs.existsSync(xmlPath)) fs.unlinkSync(xmlPath);
-
-    res.json({ message: "Visita finalizada y documentos subidos a Drive" });
   } catch (error) {
     console.error("Error al finalizar:", error);
     res.status(500).json({ error: "No se pudo finalizar" });
@@ -199,3 +190,42 @@ exports.deleteVisit = async (req, res) => {
     res.json({ message: "Borrada" });
   } catch (error) { res.status(500).json({ error: "Error al borrar" }); }
 };
+
+async function generateDocumentsInBackground(id) {
+  try {
+    const data = await getFullVisitData(id);
+
+    const folderId = await driveService.getOrCreateClientFolder(`Visita_${id}`);
+
+    // --- PDF ---
+    const pdfPath = path.join(__dirname, `../../temp_report_${id}.pdf`);
+    await pdfService.createPDFFile(data, pdfPath);
+
+    await driveService.uploadFile(
+      pdfPath,
+      `Informe_Visita_${id}.pdf`,
+      folderId
+    );
+
+    if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
+
+    // --- XML ---
+    const xmlPath = path.join(__dirname, `../../temp_data_${id}.xml`);
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?><visita id="${id}"><estado>finalizada</estado></visita>`;
+
+    fs.writeFileSync(xmlPath, xmlContent);
+
+    await driveService.uploadFile(
+      xmlPath,
+      `Datos_Visita_${id}.xml`,
+      folderId
+    );
+
+    if (fs.existsSync(xmlPath)) fs.unlinkSync(xmlPath);
+
+    console.log(`Documentos generados para visita ${id} ✅`);
+
+  } catch (error) {
+    console.error("Error generando documentos en background:", error);
+  }
+}
