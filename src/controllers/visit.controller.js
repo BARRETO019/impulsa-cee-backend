@@ -139,17 +139,42 @@ exports.getInstallations = async (req, res) => {
 // --- 6. FOTOS Y FINALIZACIÓN ---
 exports.uploadPhoto = async (req, res) => {
   try {
-    const files = req.files || [];
-    const inserted = [];
-    for (const file of files) {
-      const result = await pool.query(`INSERT INTO visit_photos (visit_id, filename, filepath, tipo) VALUES ($1,$2,$3,$4) RETURNING *`, 
-      [req.params.id, file.filename, file.path, "general"]);
-      inserted.push(result.rows[0]);
-    }
-    res.status(201).json(inserted);
-  } catch (error) { res.status(500).json({ error: "Error en fotos" }); }
-};
+    const { id } = req.params;
+    const files = req.files; // Multer inyecta aquí el array de archivos
 
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: "No se han recibido archivos." });
+    }
+
+    const savedPhotos = [];
+
+    // Recorremos el array de archivos que envió el frontend
+    for (const file of files) {
+      const query = `
+        INSERT INTO visit_photos (visit_id, filename, filepath, tipo) 
+        VALUES ($1, $2, $3, $4) 
+        RETURNING *`;
+      
+      const result = await pool.query(query, [
+        id, 
+        file.originalname, 
+        file.path || file.location, // 'path' para local/disk, 'location' para S3/Cloudinary
+        'general'
+      ]);
+      
+      savedPhotos.push(result.rows[0]);
+    }
+
+    res.status(201).json({
+      message: "Fotos guardadas correctamente",
+      photos: savedPhotos
+    });
+
+  } catch (error) {
+    console.error("Error detallado en uploadPhoto:", error);
+    res.status(500).json({ error: "Error interno al procesar las imágenes." });
+  }
+};
 exports.exportPDF = async (req, res) => {
   try {
     const id = req.params.id;
