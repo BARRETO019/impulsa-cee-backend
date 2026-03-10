@@ -3,27 +3,39 @@ const fs = require('fs');
 const path = require('path');
 
 // ===============================
-// OBTENER CLIENTE OAUTH
+// CONFIGURACIÓN DE AUTENTICACIÓN (Service Account)
 // ===============================
 
-const oauthService = require('./oauth.service');
-
+// Función interna para obtener la instancia de Drive autenticada
 function getDrive() {
-  const auth = oauthService.getAuthenticatedClient();
-  return google.drive({ version: 'v3', auth });
+  try {
+    // Leemos el JSON de la variable de entorno de Render
+    const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+
+    const auth = new google.auth.JWT(
+      serviceAccount.client_email,
+      null,
+      serviceAccount.private_key.replace(/\\n/g, '\n'),
+      ['https://www.googleapis.com/auth/drive']
+    );
+
+    return google.drive({ version: 'v3', auth });
+  } catch (error) {
+    console.error("Error al inicializar Google Drive Service Account:", error.message);
+    throw new Error("Fallo en la autenticación de Drive");
+  }
 }
 
 // ===============================
-// BUSCAR CARPETA POR NOMBRE (opcionalmente dentro de parent)
+// BUSCAR CARPETA POR NOMBRE
 // ===============================
 
 exports.findFolderByName = async (folderName, parentId = null) => {
-
   const drive = getDrive();
 
   let query = `
-    mimeType='application/vnd.google-apps.folder'
-    and name='${folderName}'
+    mimeType='application/vnd.google-apps.folder' 
+    and name='${folderName}' 
     and trashed=false
   `;
 
@@ -36,17 +48,14 @@ exports.findFolderByName = async (folderName, parentId = null) => {
     fields: 'files(id, name)',
   });
 
-  return response.data.files.length > 0
-    ? response.data.files[0]
-    : null;
+  return response.data.files.length > 0 ? response.data.files[0] : null;
 };
 
 // ===============================
-// CREAR CARPETA (CON PARENT OPCIONAL)
+// CREAR CARPETA
 // ===============================
 
 exports.createFolder = async (folderName, parentId = null) => {
-
   const drive = getDrive();
 
   const fileMetadata = {
@@ -68,7 +77,6 @@ exports.createFolder = async (folderName, parentId = null) => {
 // ===============================
 
 exports.getOrCreateClientFolder = async (clientName) => {
-
   const existingFolder = await exports.findFolderByName(clientName);
 
   if (existingFolder) {
@@ -83,7 +91,6 @@ exports.getOrCreateClientFolder = async (clientName) => {
 // ===============================
 
 exports.uploadFile = async (filePath, fileName, parentId) => {
-
   const drive = getDrive();
 
   const fileMetadata = {
@@ -92,13 +99,13 @@ exports.uploadFile = async (filePath, fileName, parentId) => {
   };
 
   const media = {
-    mimeType: 'application/octet-stream',
+    mimeType: 'image/jpeg', // Cambiado de octet-stream para que Drive lo reconozca como imagen
     body: fs.createReadStream(filePath),
   };
 
   const file = await drive.files.create({
     resource: fileMetadata,
-    media,
+    media: media,
     fields: 'id',
   });
 
