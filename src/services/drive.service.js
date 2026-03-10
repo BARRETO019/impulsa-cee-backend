@@ -12,24 +12,34 @@ const path = require('path');
 
 function getDrive() {
   try {
-    // 1. Leemos el JSON de la variable de entorno de Render
-    if (!process.env.GOOGLE_SERVICE_ACCOUNT) {
-      throw new Error("La variable GOOGLE_SERVICE_ACCOUNT no está definida en Render");
+    const jsonString = process.env.GOOGLE_SERVICE_ACCOUNT;
+    
+    if (!jsonString) {
+      throw new Error("La variable GOOGLE_SERVICE_ACCOUNT está vacía en Render.");
     }
 
-    const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+    const serviceAccount = JSON.parse(jsonString);
 
-    // 2. Usamos serviceAccount (asegúrate de que coincida con la variable de arriba)
+    // LOG DE SEGURIDAD (Verás esto en los logs de Render para depurar)
+    console.log("Campos detectados en el JSON:", Object.keys(serviceAccount));
+
+    const clientEmail = serviceAccount.client_email;
+    const privateKey = serviceAccount.private_key;
+
+    if (!clientEmail || !privateKey) {
+      throw new Error(`Faltan campos críticos. Email: ${!!clientEmail}, Key: ${!!privateKey}`);
+    }
+
     const auth = new google.auth.JWT(
-      serviceAccount.client_email,
+      clientEmail,
       null,
-      serviceAccount.private_key.replace(/\\n/g, '\n'), // Aquí es donde fallaba
+      privateKey.replace(/\\n/g, '\n'),
       ['https://www.googleapis.com/auth/drive']
     );
 
     return google.drive({ version: 'v3', auth });
   } catch (error) {
-    console.error("Error al inicializar Google Drive Service Account:", error.message);
+    console.error("Error detallado en Drive Auth:", error.message);
     throw new Error("Fallo en la autenticación de Drive: " + error.message);
   }
 }
