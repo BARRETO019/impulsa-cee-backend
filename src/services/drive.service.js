@@ -62,11 +62,24 @@ exports.getOrCreateClientFolder = async (clientName) => {
 
 exports.uploadFile = async (filePath, fileName, parentId) => {
   const drive = getDrive();
-  const fileMetadata = { name: fileName, parents: [parentId] };
+  
+  const fileMetadata = { 
+    name: fileName, 
+    parents: [parentId] 
+  };
+
   const media = {
     mimeType: 'image/jpeg',
     body: fs.createReadStream(filePath),
   };
-  const file = await drive.files.create({ resource: fileMetadata, media: media, fields: 'id' });
+
+  const file = await drive.files.create({
+    resource: fileMetadata,
+    media: media,
+    fields: 'id',
+    // ESTA ES LA LÍNEA CLAVE:
+    supportsAllDrives: true, 
+  });
+
   return file.data.id;
 };
