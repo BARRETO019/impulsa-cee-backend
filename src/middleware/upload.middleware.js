@@ -25,5 +25,5 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB máximo por foto
 });
 
-// IMPORTANTE: Definimos que el campo se llama 'photo' (en singular)
-module.exports = upload.array('photo', 15);
+// CAMBIO APLICADO: Usamos .any() para que acepte archivos de cualquier campo (fotos, fotos_fachada, etc.)
+module.exports = upload.any();

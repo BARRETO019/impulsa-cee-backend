@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-// Middleware de subida de archivos (Configurado para .array('photo'))
+// Middleware de subida de archivos
 const upload = require('../middleware/upload.middleware');
 
 // Controlador de visitas
@@ -44,26 +44,25 @@ router.get('/airtable/planeados', async (req, res) => {
 router.post('/', verifyToken, verifyRole(rolesAutorizados), visitController.createVisit);
 router.get('/', verifyToken, verifyRole(rolesAutorizados), visitController.getMyVisits);
 
-// 2. Paso 1: Edificio
-router.put('/:id/building', verifyToken, verifyRole(rolesAutorizados), visitController.saveBuildingData);
+// 2. Paso 1 (Fachadas con fotos) y Paso 2 (Datos Vivienda)
+// NUEVO: Añadimos 'upload' porque el Paso 1 ahora manda FormData con imágenes
+router.put('/:id/building', verifyToken, verifyRole(rolesAutorizados), upload, visitController.saveBuildingData);
 
-// 3. Paso 2: Envolvente
+// 3. Paso 3: Envolvente (Se queda sin 'upload' porque solo manda texto normal / JSON)
 router.post('/:id/envelope', verifyToken, verifyRole(rolesAutorizados), visitController.addEnvelopeElement);
 router.get('/:id/envelope', verifyToken, verifyRole(rolesAutorizados), visitController.getEnvelope);
 
-// 4. Paso 3: Ventanas
-router.post('/:id/windows', verifyToken, verifyRole(rolesAutorizados), visitController.addWindow);
+// 4. Paso 4: Ventanas 
+// NUEVO: Añadimos 'upload' para recibir las fotos de los huecos
+router.post('/:id/windows', verifyToken, verifyRole(rolesAutorizados), upload, visitController.addWindow);
 router.get('/:id/windows', verifyToken, verifyRole(rolesAutorizados), visitController.getWindows);
 
-// 5. Paso 4: Instalaciones
-router.post('/:id/installations', verifyToken, verifyRole(rolesAutorizados), visitController.addInstallation);
+// 5. Paso 5: Instalaciones 
+// NUEVO: Añadimos 'upload' para recibir las fotos de los equipos
+router.post('/:id/installations', verifyToken, verifyRole(rolesAutorizados), upload, visitController.addInstallation);
 router.get('/:id/installations', verifyToken, verifyRole(rolesAutorizados), visitController.getInstallations);
 
-// 6. Paso 5: Fotos y Finalización
-/** * CAMBIO CLAVE: 
- * Usamos 'upload' directamente porque el middleware ya tiene el .array('photo') 
- * configurado para que coincida con el Drive y el Frontend.
- */
+// 6. Paso 6: Fotos Generales
 router.post('/:id/photos', verifyToken, verifyRole(rolesAutorizados), upload, visitController.uploadPhoto);
 
 // 7. Exportación y Finalización
