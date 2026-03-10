@@ -3,13 +3,8 @@ const fs = require('fs');
 const path = require('path');
 
 // ===============================
-// CONFIGURACIÓN DE AUTENTICACIÓN (Service Account)
+// 1. FUNCIÓN DE AUTENTICACIÓN (EL CÓDIGO DE TU CAPTURA)
 // ===============================
-
-// Función interna para obtener la instancia de Drive autenticada
-// ===============================
-// ===============================
-
 function getDrive() {
   try {
     const jsonString = process.env.GOOGLE_SERVICE_ACCOUNT;
@@ -20,14 +15,14 @@ function getDrive() {
 
     const serviceAccount = JSON.parse(jsonString);
 
-    // LOG DE SEGURIDAD (Verás esto en los logs de Render para depurar)
+    // LOG DE SEGURIDAD
     console.log("Campos detectados en el JSON:", Object.keys(serviceAccount));
 
     const clientEmail = serviceAccount.client_email;
     const privateKey = serviceAccount.private_key;
 
     if (!clientEmail || !privateKey) {
-      throw new Error(`Faltan campos críticos. Email: ${!!clientEmail}, Key: ${!!privateKey}`);
+      throw new Error(`Faltan campos críticos en el JSON. Email: ${!!clientEmail}, Key: ${!!privateKey}`);
     }
 
     const auth = new google.auth.JWT(
@@ -45,18 +40,11 @@ function getDrive() {
 }
 
 // ===============================
-// BUSCAR CARPETA POR NOMBRE
+// 2. BUSCAR CARPETA POR NOMBRE
 // ===============================
-
 exports.findFolderByName = async (folderName, parentId = null) => {
   const drive = getDrive();
-
-  let query = `
-    mimeType='application/vnd.google-apps.folder' 
-    and name='${folderName}' 
-    and trashed=false
-  `;
-
+  let query = `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false`;
   if (parentId) {
     query += ` and '${parentId}' in parents`;
   }
@@ -70,12 +58,10 @@ exports.findFolderByName = async (folderName, parentId = null) => {
 };
 
 // ===============================
-// CREAR CARPETA
+// 3. CREAR CARPETA
 // ===============================
-
 exports.createFolder = async (folderName, parentId = null) => {
   const drive = getDrive();
-
   const fileMetadata = {
     name: folderName,
     mimeType: 'application/vnd.google-apps.folder',
@@ -91,33 +77,28 @@ exports.createFolder = async (folderName, parentId = null) => {
 };
 
 // ===============================
-// OBTENER O CREAR CARPETA CLIENTE
+// 4. OBTENER O CREAR CARPETA CLIENTE
 // ===============================
-
 exports.getOrCreateClientFolder = async (clientName) => {
   const existingFolder = await exports.findFolderByName(clientName);
-
   if (existingFolder) {
     return existingFolder.id;
   }
-
   return await exports.createFolder(clientName);
 };
 
 // ===============================
-// SUBIR ARCHIVO A CARPETA
+// 5. SUBIR ARCHIVO A CARPETA
 // ===============================
-
 exports.uploadFile = async (filePath, fileName, parentId) => {
   const drive = getDrive();
-
   const fileMetadata = {
     name: fileName,
     parents: [parentId],
   };
 
   const media = {
-    mimeType: 'image/jpeg', // Cambiado de octet-stream para que Drive lo reconozca como imagen
+    mimeType: 'image/jpeg',
     body: fs.createReadStream(filePath),
   };
 
