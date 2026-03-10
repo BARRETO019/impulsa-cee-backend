@@ -7,22 +7,30 @@ const path = require('path');
 // ===============================
 
 // Función interna para obtener la instancia de Drive autenticada
+// ===============================
+// ===============================
+
 function getDrive() {
   try {
-    // Leemos el JSON de la variable de entorno de Render
+    // 1. Leemos el JSON de la variable de entorno de Render
+    if (!process.env.GOOGLE_SERVICE_ACCOUNT) {
+      throw new Error("La variable GOOGLE_SERVICE_ACCOUNT no está definida en Render");
+    }
+
     const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
 
+    // 2. Usamos serviceAccount (asegúrate de que coincida con la variable de arriba)
     const auth = new google.auth.JWT(
       serviceAccount.client_email,
       null,
-      serviceAccount.private_key.replace(/\\n/g, '\n'),
+      serviceAccount.private_key.replace(/\\n/g, '\n'), // Aquí es donde fallaba
       ['https://www.googleapis.com/auth/drive']
     );
 
     return google.drive({ version: 'v3', auth });
   } catch (error) {
     console.error("Error al inicializar Google Drive Service Account:", error.message);
-    throw new Error("Fallo en la autenticación de Drive");
+    throw new Error("Fallo en la autenticación de Drive: " + error.message);
   }
 }
 
