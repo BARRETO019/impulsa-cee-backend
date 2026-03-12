@@ -4,3 +4,6 @@ uploads/
 .env
 src/config/drive-credentials.json
 src/config/oauth-token.json
+temp_visita_*
+*.pdf
+*.xml
