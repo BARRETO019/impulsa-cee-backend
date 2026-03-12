@@ -82,6 +82,26 @@ exports.getEnvelope = async (req, res) => {
     res.json(result.rows);
   } catch (error) { res.status(500).json({ error: "Error obteniendo envolvente" }); }
 };
+exports.deleteEnvelopeElement = async (req, res) => {
+  const { id, elementoId } = req.params;
+
+  try {
+    // IMPORTANTE: Tu tabla parece llamarse visit_envelope, así que usamos ese nombre
+    const result = await pool.query(
+      'DELETE FROM visit_envelope WHERE id = $1 AND visit_id = $2 RETURNING *',
+      [elementoId, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Elemento no encontrado o no pertenece a esta visita." });
+    }
+
+    res.json({ message: "Elemento borrado correctamente", deleted: result.rows[0] });
+  } catch (error) {
+    console.error("❌ Error borrando elemento de la envolvente:", error);
+    res.status(500).json({ error: "Error interno al borrar el elemento." });
+  }
+};
 // --- 4. VENTANAS ---
 exports.addWindow = async (req, res) => {
   try {

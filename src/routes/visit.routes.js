@@ -48,9 +48,10 @@ router.get('/', verifyToken, verifyRole(rolesAutorizados), visitController.getMy
 // NUEVO: Añadimos 'upload' porque el Paso 1 ahora manda FormData con imágenes
 router.put('/:id/building', verifyToken, verifyRole(rolesAutorizados), upload, visitController.saveBuildingData);
 
-// 3. Paso 3: Envolvente (Se queda sin 'upload' porque solo manda texto normal / JSON)
+// 3. Paso 3: Envolvente (Se queda sin 'upload' porque solo manda texto normal / JSON / delete linea de borrado)
 router.post('/:id/envelope', verifyToken, verifyRole(rolesAutorizados), visitController.addEnvelopeElement);
 router.get('/:id/envelope', verifyToken, verifyRole(rolesAutorizados), visitController.getEnvelope);
+router.delete('/:id/envelope/:elementoId', verifyToken, verifyRole(rolesAutorizados), visitController.deleteEnvelopeElement);
 
 // 4. Paso 4: Ventanas 
 // NUEVO: Añadimos 'upload' para recibir las fotos de los huecos
