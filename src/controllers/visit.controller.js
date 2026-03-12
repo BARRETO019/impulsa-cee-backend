@@ -70,11 +70,30 @@ exports.saveBuildingData = async (req, res) => {
 // --- 3. ENVOLVENTE ---
 exports.addEnvelopeElement = async (req, res) => {
   try {
-    const { tipo, orientacion, superficie, transmitancia } = req.body;
-    const query = `INSERT INTO visit_envelope (visit_id, tipo, nombre, superficie, orientacion, transmitancia) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
-    const result = await pool.query(query, [req.params.id, tipo, tipo, superficie || 0, orientacion, transmitancia || 0]);
+    // 1. Añadimos largo, ancho y alto a lo que recibimos del body
+    const { tipo, orientacion, superficie, transmitancia, largo, ancho, alto } = req.body;
+    
+    // 2. Actualizamos la consulta SQL para insertar los 3 nuevos valores
+    const query = `INSERT INTO visit_envelope (visit_id, tipo, nombre, superficie, orientacion, transmitancia, largo, ancho, alto) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`;
+    
+    // 3. Pasamos los valores asegurándonos de que si vienen vacíos sean 0
+    const result = await pool.query(query, [
+      req.params.id, 
+      tipo, 
+      tipo, 
+      superficie || 0, 
+      orientacion, 
+      transmitancia || 0,
+      largo || 0,
+      ancho || 0,
+      alto || 0
+    ]);
+    
     res.status(201).json(result.rows[0]);
-  } catch (error) { res.status(500).json({ error: "Error en envolvente" }); }
+  } catch (error) { 
+    console.error("Error guardando envolvente:", error);
+    res.status(500).json({ error: "Error en envolvente" }); 
+  }
 };
 exports.getEnvelope = async (req, res) => {
   try {
