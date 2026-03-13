@@ -37,36 +37,71 @@ exports.createVisit = async (req, res) => {
     res.status(500).json({ error: error.message }); 
   }
 };
-
 exports.getMyVisits = async (req, res) => {
   try {
     const result = await pool.query(`SELECT * FROM visits WHERE tecnico_id = $1 ORDER BY created_at DESC`, [req.user.id]);
     res.json(result.rows);
   } catch (error) { res.status(500).json({ error: "Error obteniendo visitas" }); }
 };
-
 // --- 2. DATOS EDIFICIO ---
 exports.saveBuildingData = async (req, res) => {
   try {
     const { id } = req.params;
-    const { zona_climatica, normativa, referencia_catastral, superficie_habitable, ano_construccion, motivo_certificado, alturas_plantas, num_plantas } = req.body;
+    const { 
+      zona_climatica, 
+      normativa, 
+      referencia_catastral, 
+      superficie_habitable, 
+      ano_construccion, 
+      motivo_certificado, 
+      alturas_plantas, 
+      num_plantas,
+      potencia_instalada // <--- 1. Recibimos el nuevo campo desde el body
+    } = req.body;
     
+    // 2. Actualizamos la tabla visits incluyendo la potencia_instalada
     await pool.query(
-      `UPDATE visits SET ano_construccion=$1, motivo_certificado=$2, num_plantas=$3, alturas_plantas=$4 WHERE id=$5`,
-      [ano_construccion, motivo_certificado, num_plantas, alturas_plantas, id]
+      `UPDATE visits SET 
+        ano_construccion=$1, 
+        motivo_certificado=$2, 
+        num_plantas=$3, 
+        alturas_plantas=$4, 
+        potencia_instalada=$5 
+       WHERE id=$6`,
+      [
+        ano_construccion, 
+        motivo_certificado, 
+        num_plantas, 
+        alturas_plantas, 
+        potencia_instalada || null, // Si no viene nada, guardamos null
+        id
+      ]
     );
 
     const query = `
       INSERT INTO visit_building (visit_id, zona_climatica, normativa, referencia_catastral, superficie_habitable) 
       VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT (visit_id) 
-      DO UPDATE SET zona_climatica=EXCLUDED.zona_climatica, normativa=EXCLUDED.normativa, referencia_catastral=EXCLUDED.referencia_catastral, superficie_habitable=EXCLUDED.superficie_habitable`;
+      DO UPDATE SET 
+        zona_climatica=EXCLUDED.zona_climatica, 
+        normativa=EXCLUDED.normativa, 
+        referencia_catastral=EXCLUDED.referencia_catastral, 
+        superficie_habitable=EXCLUDED.superficie_habitable`;
     
-    await pool.query(query, [id, zona_climatica, normativa || 'NBE-CT-79', referencia_catastral || '', superficie_habitable || 0]);
-    res.json({ message: "Edificio guardado" });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-};
+    await pool.query(query, [
+      id, 
+      zona_climatica, 
+      normativa || 'NBE-CT-79', 
+      referencia_catastral || '', 
+      superficie_habitable || 0
+    ]);
 
+    res.json({ message: "Edificio y visita actualizados correctamente" });
+  } catch (error) { 
+    console.error("Error en saveBuildingData:", error);
+    res.status(500).json({ error: error.message }); 
+  }
+};
 // --- 3. ENVOLVENTE ---
 exports.addEnvelopeElement = async (req, res) => {
   try {
@@ -74,7 +109,8 @@ exports.addEnvelopeElement = async (req, res) => {
     const { tipo, orientacion, superficie, transmitancia, largo, ancho, alto } = req.body;
     
     // 2. Actualizamos la consulta SQL para insertar los 3 nuevos valores
-    const query = `INSERT INTO visit_envelope (visit_id, tipo, nombre, superficie, orientacion, transmitancia, largo, ancho, alto) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`;
+    const query = `INSERT INTO visit_envelope (visit_id, tipo, nombre, superficie, orientacion, transmitancia, largo, ancho, alto) 
+                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`;
     
     // 3. Pasamos los valores asegurándonos de que si vienen vacíos sean 0
     const result = await pool.query(query, [
