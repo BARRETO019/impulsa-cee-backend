@@ -161,28 +161,35 @@ exports.deleteEnvelopeElement = async (req, res) => {
 exports.addWindow = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, marco, vidrio, superficie } = req.body;
+    // 1. Recibimos 'orientacion' (Principal, Trasera...) desde el body
+    const { nombre, marco, vidrio, superficie, orientacion } = req.body; 
     
-    // 1. Guardamos los datos de la ventana
-    const query = `INSERT INTO visit_windows (visit_id, nombre, superficie, orientacion, marco, vidrio) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
-    const result = await pool.query(query, [id, nombre || "Ventana", parseFloat(superficie) || 0, "N/A", marco || "No especificado", vidrio || "No especificado"]);
+    // 2. Insertamos usando la variable real en lugar de "N/A"
+    const query = `
+      INSERT INTO visit_windows (visit_id, nombre, superficie, orientacion, marco, vidrio) 
+      VALUES ($1, $2, $3, $4, $5, $6) 
+      RETURNING *`;
+    
+    const result = await pool.query(query, [
+      id, 
+      nombre || "Ventana", 
+      parseFloat(superficie) || 0, 
+      orientacion || "No especificada", // <--- 🆕 Aquí el dato del técnico
+      marco || "No especificado", 
+      vidrio || "No especificado"
+    ]);
     
     const nuevaVentana = result.rows[0];
 
-    // 2. Si vienen fotos (de multer), las subimos a Drive
+    // 3. Lógica de fotos (Drive)... se queda igual
     if (req.files && req.files.length > 0) {
       const folderId = await driveService.getOrCreateClientFolder(`Visita_${id}`);
-      
       for (const file of req.files) {
         const driveFileId = await driveService.uploadFile(file.path, file.filename, folderId);
-        
-        // Guardamos en visit_photos (Asegúrate de tener un campo 'referencia_id' o similar si quieres hilar fino, 
-        // aquí uso 'tipo' = 'ventana' para distinguirlas de las generales)
         await pool.query(
           `INSERT INTO visit_photos (visit_id, filename, filepath, tipo) VALUES ($1, $2, $3, $4)`,
-          [id, file.originalname, driveFileId, `ventana_${nuevaVentana.id}`] // Truco: guardo el ID en el tipo para saber de qué ventana es
+          [id, file.originalname, driveFileId, `ventana_${nuevaVentana.id}`]
         );
-        
         if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
       }
     }
@@ -193,7 +200,6 @@ exports.addWindow = async (req, res) => {
     res.status(500).json({ error: "Error al guardar la ventana" }); 
   }
 };
-
 exports.getWindows = async (req, res) => {
   try {
     const result = await pool.query(`SELECT * FROM visit_windows WHERE visit_id = $1`, [req.params.id]);

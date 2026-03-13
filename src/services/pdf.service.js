@@ -42,9 +42,17 @@ const drawPDFContent = (doc, data) => {
   doc.font('Helvetica-Bold').text('Dormitorios:', 320, doc.y + 5).font('Helvetica').text(visit.dormitorios || '0', 400, doc.y - 10);
   doc.font('Helvetica-Bold').text('Sup. Útil:', 320, doc.y + 5).font('Helvetica').text(`${visit.superficie || 0} m²`, 400, doc.y - 10);
   
+  // se añade potencia si existe
+  if (visit.potencia_instalada) {
+    doc.font('Helvetica-Bold').fillColor('#d4a017')
+       .text('Pot. Solar:', 320, doc.y + 5)
+       .font('Helvetica').fillColor('#000')
+       .text(`${visit.potencia_instalada} kW`, 400, doc.y - 10);
+  }
+  //espacio de secciones 
   doc.moveDown(2);
 
-  // --- 2. FACHADAS Y ORIENTACIONES (Nuevo!) ---
+  // --- 2. FACHADAS Y ORIENTACIONES
   renderSectionHeader(doc, '2. FACHADAS Y ENVOLVENTE');
   
   // Agrupamos fotos de fachadas
@@ -70,13 +78,23 @@ const drawPDFContent = (doc, data) => {
     doc.fontSize(10).text('No se han registrado huecos.');
   } else {
     windows.forEach(w => {
+      // Título de la ventana
       doc.fontSize(10).font('Helvetica-Bold').text(`• ${w.nombre}`, { b: true });
-      doc.fontSize(9).font('Helvetica').text(`Dimensiones/Sup: ${w.superficie} m² | Marco: ${w.marco} | Vidrio: ${w.vidrio}`, { indent: 15 });
       
-      // Buscamos si esta ventana tiene foto (vinculada por tipo 'ventana_ID')
+      // Detalles: Añadimos la Fachada/Orientación aquí
+      doc.fontSize(9).font('Helvetica').fillColor('#444')
+         .text(`Fachada: ${w.orientacion || 'No especificada'}`, { indent: 15 });
+      
+      doc.text(`Dimensiones/Sup: ${w.superficie} m² | Marco: ${w.marco} | Vidrio: ${w.vidrio}`, { indent: 15 });
+      
+      // Vinculación de fotos
       const tieneFoto = photos.some(p => p.tipo === `ventana_${w.id}`);
-      if (tieneFoto) doc.fontSize(8).fillColor('#007bff').text('[ Foto adjunta en anexo ]', { indent: 15 }).fillColor('#000');
-      doc.moveDown(0.5);
+      if (tieneFoto) {
+        doc.moveDown(0.2);
+        doc.fontSize(8).fillColor('#007bff').text('[ Foto adjunta en anexo ]', { indent: 15 });
+      }
+      
+      doc.fillColor('#000').moveDown(0.8); // Reset color y espacio para la siguiente
     });
   }
   doc.moveDown(1);
