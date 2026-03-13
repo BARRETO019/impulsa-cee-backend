@@ -1,4 +1,4 @@
-# ⚙️ Impulsa Energía - API Backend (v0.1)
+# ⚙️ Impulsa Energía - API Backend (v0.2)
 
 Servidor robusto basado en **Node.js** y **Express** que gestiona la lógica de negocio, autenticación y almacenamiento de datos para la App de Certificaciones Técnicas.
 
