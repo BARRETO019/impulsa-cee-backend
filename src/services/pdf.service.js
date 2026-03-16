@@ -9,7 +9,6 @@ function renderSectionHeader(doc, title) {
   doc.fillColor('#333333').fontSize(11).font('Helvetica-Bold').text(title, 60, currentY + 5);
   doc.moveDown(1.5);
 }
-
 // --- FUNCIÓN PRINCIPAL DE DIBUJO ---
 const drawPDFContent = (doc, data) => {
   const { visit, building, envelope, windows, installations, photos } = data;
@@ -125,7 +124,6 @@ const drawPDFContent = (doc, data) => {
 
   doc.end();
 };
-
 // --- EXPORTS ---
 exports.generatePDF = (res, data) => {
   const doc = new PDFDocument({ margin: 50, size: 'A4' });
@@ -134,7 +132,6 @@ exports.generatePDF = (res, data) => {
   doc.pipe(res);
   drawPDFContent(doc, data);
 };
-
 exports.createPDFFile = (data, outputPath) => {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 50, size: 'A4' });

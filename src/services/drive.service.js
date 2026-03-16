@@ -1,15 +1,14 @@
 const { google } = require('googleapis');
 const fs = require('fs');
 
-// Importamos tu servicio OAuth original
+// Importamos servicio OAuth original
 const oauthService = require('./oauth.service');
 
 function getDrive() {
-  // Aquí usamos tus credenciales (Refresh Token) que tiran de tus 2TB
+  // Aquí usamos tus credenciales (Refresh Token)
   const auth = oauthService.getAuthenticatedClient();
   return google.drive({ version: 'v3', auth });
 }
-
 // ===============================
 // 1. BUSCAR CARPETA POR NOMBRE
 // ===============================
