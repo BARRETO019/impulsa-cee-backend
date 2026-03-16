@@ -1,23 +1,22 @@
 const { google } = require('googleapis');
 const fs = require('fs');
-
-// Importamos servicio OAuth original
 const oauthService = require('./oauth.service');
 
+// ID de la carpeta que me pasaste
+const MASTER_FOLDER_ID = '1eod4hiRkbDxIk55U7DzVnq-HBIkxIRZr';
+
 function getDrive() {
-  // Aquí usamos tus credenciales (Refresh Token)
   const auth = oauthService.getAuthenticatedClient();
   return google.drive({ version: 'v3', auth });
 }
-// ===============================
-// 1. BUSCAR CARPETA POR NOMBRE
-// ===============================
-exports.findFolderByName = async (folderName, parentId = null) => {
+
+// 1. BUSCAR CARPETA POR NOMBRE (Solo dentro de la carpeta maestra)
+exports.findFolderByName = async (folderName) => {
   const drive = getDrive();
-  let query = `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false`;
-  if (parentId) {
-    query += ` and '${parentId}' in parents`;
-  }
+  // Escapamos comillas simples por si el cliente se llama "O'Connor"
+  const safeName = folderName.replace(/'/g, "\\'");
+  
+  const query = `mimeType='application/vnd.google-apps.folder' and name='${safeName}' and '${MASTER_FOLDER_ID}' in parents and trashed=false`;
 
   const response = await drive.files.list({
     q: query,
@@ -27,15 +26,13 @@ exports.findFolderByName = async (folderName, parentId = null) => {
   return response.data.files.length > 0 ? response.data.files[0] : null;
 };
 
-// ===============================
-// 2. CREAR CARPETA
-// ===============================
-exports.createFolder = async (folderName, parentId = null) => {
+// 2. CREAR CARPETA (Siempre dentro de la carpeta maestra)
+exports.createFolder = async (folderName) => {
   const drive = getDrive();
   const fileMetadata = {
     name: folderName,
     mimeType: 'application/vnd.google-apps.folder',
-    parents: parentId ? [parentId] : []
+    parents: [MASTER_FOLDER_ID] // Forzamos que se cree dentro de tu link
   };
 
   const folder = await drive.files.create({
@@ -43,13 +40,11 @@ exports.createFolder = async (folderName, parentId = null) => {
     fields: 'id',
   });
 
-  console.log(`✅ Carpeta '${folderName}' creada exitosamente.`);
+  console.log(`✅ Carpeta '${folderName}' creada dentro de la carpeta maestra.`);
   return folder.data.id;
 };
 
-// ===============================
 // 3. OBTENER O CREAR CARPETA CLIENTE
-// ===============================
 exports.getOrCreateClientFolder = async (clientName) => {
   const existingFolder = await exports.findFolderByName(clientName);
   if (existingFolder) {
@@ -58,18 +53,20 @@ exports.getOrCreateClientFolder = async (clientName) => {
   return await exports.createFolder(clientName);
 };
 
-// ===============================
-// 4. SUBIR ARCHIVO A CARPETA
-// ===============================
-exports.uploadFile = async (filePath, fileName, parentId) => {
+// 4. SUBIR ARCHIVO A CARPETA DEL CLIENTE
+exports.uploadFile = async (filePath, fileName, clientFolderName) => {
   const drive = getDrive();
+  
+  // Primero obtenemos el ID de la carpeta del cliente
+  const folderId = await exports.getOrCreateClientFolder(clientFolderName);
+
   const fileMetadata = {
-    name: fileName,
-    parents: [parentId],
+    name: fileName, // Aquí puedes poner el nombre que quieras para el archivo
+    parents: [folderId],
   };
 
   const media = {
-    mimeType: 'image/jpeg',
+    // Quitamos el mimeType fijo para que Drive lo detecte (JPG, PDF, etc)
     body: fs.createReadStream(filePath),
   };
 
@@ -79,6 +76,9 @@ exports.uploadFile = async (filePath, fileName, parentId) => {
     fields: 'id',
   });
 
-  console.log(`✅ Archivo '${fileName}' subido exitosamente a Drive.`);
+  // IMPORTANTE: Borrar el archivo temporal de Render después de subirlo
+  fs.unlinkSync(filePath); 
+
+  console.log(`✅ Archivo '${fileName}' subido a la carpeta de '${clientFolderName}'.`);
   return file.data.id;
 };
