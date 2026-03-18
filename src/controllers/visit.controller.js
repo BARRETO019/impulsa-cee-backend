@@ -108,75 +108,86 @@ exports.deleteEnvelopeElement = async (req, res) => {
   } catch (error) { res.status(500).json({ error: "Error al borrar" }); }
 };
 
-// --- 4. VENTANAS (Corregido para Drive con nombre cliente) ---
+// --- 4. VENTANAS ---
 exports.addWindow = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // 1. Recogemos todos los campos (Dimensiones, CE3X y Sombras)
+
     const { 
-      nombre, 
-      marco, 
-      vidrio, 
-      superficie, 
-      orientacion, 
-      proteccion_solar, 
-      largo, 
-      alto,
-      retranqueo, // 🆕 Nuevo
-      voladizo    // 🆕 Nuevo
-    } = req.body; 
-    
-    // 2. Actualizamos la QUERY para incluir las nuevas columnas de sombras
+      nombre, marco, vidrio, superficie, orientacion, 
+      proteccion_solar, largo, alto, retranqueo, voladizo 
+    } = req.body;
+
     const query = `
       INSERT INTO visit_windows (
         visit_id, nombre, superficie, orientacion, marco, vidrio, 
         proteccion_solar, largo, alto, retranqueo, voladizo
       ) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) 
       RETURNING *`;
-    
-    // 3. Pasamos los valores al array de parámetros (asegurando que sean números)
+
     const result = await pool.query(query, [
-      id, 
-      nombre || "Ventana", 
-      parseFloat(superficie) || 0, 
-      orientacion || "No especificada", 
-      marco || "No especificado", 
+      id,
+      nombre || "Ventana",
+      parseFloat(superficie) || 0,
+      orientacion || "No especificada",
+      marco || "No especificado",
       vidrio || "No especificado",
       proteccion_solar || "Sin protección",
       parseFloat(largo) || 0,
       parseFloat(alto) || 0,
-      parseFloat(retranqueo) || 0, // 🆕 Valor por defecto 0
-      parseFloat(voladizo) || 0    // 🆕 Valor por defecto 0
+      parseFloat(retranqueo) || 0,
+      parseFloat(voladizo) || 0
     ]);
-    
-    const nuevaVentana = result.rows[0];
 
-    // --- Lógica de Fotos en Drive ---
-    if (req.files && req.files.length > 0) {
-      const folderName = await getFolderName(id);
-      for (const file of req.files) {
-        const driveFileId = await driveService.uploadFile(file.path, file.filename, folderName);
-        await pool.query(
-          `INSERT INTO visit_photos (visit_id, filename, filepath, tipo) VALUES ($1, $2, $3, $4)`, 
-          [id, file.originalname, driveFileId, `ventana_${nuevaVentana.id}`]
-        );
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-      }
-    }
+    res.status(201).json(result.rows[0]);
 
-    res.status(201).json(nuevaVentana);
-  } catch (error) { 
+  } catch (error) {
     console.error("Error al guardar ventana:", error);
-    res.status(500).json({ error: "Error al guardar ventana" }); 
+    res.status(500).json({ error: "Error al guardar ventana" });
   }
 };
+
+// ===============================
+// OBTENER VENTANAS
+// ===============================
 exports.getWindows = async (req, res) => {
   try {
-    const result = await pool.query(`SELECT * FROM visit_windows WHERE visit_id = $1`, [req.params.id]);
+    const result = await pool.query(
+      `SELECT * FROM visit_windows WHERE visit_id = $1`,
+      [req.params.id]
+    );
     res.json(result.rows);
-  } catch (error) { res.status(500).json({ error: "Error obteniendo ventanas" }); }
+  } catch (error) {
+    res.status(500).json({ error: "Error obteniendo ventanas" });
+  }
+};
+
+// ===============================
+// BORRAR VENTANA  🔥
+// ===============================
+exports.deleteWindow = async (req, res) => {
+  try {
+    const { windowId } = req.params;
+
+    // 🔥 Borra ventana
+    await pool.query(
+      `DELETE FROM visit_windows WHERE id = $1`,
+      [windowId]
+    );
+
+    // 🔥 (OPCIONAL PRO) Borra fotos asociadas
+    await pool.query(
+      `DELETE FROM visit_photos WHERE tipo = $1`,
+      [`ventana_${windowId}`]
+    );
+
+    res.json({ message: "Ventana eliminada correctamente" });
+
+  } catch (error) {
+    console.error("Error al borrar ventana:", error);
+    res.status(500).json({ error: "Error al borrar ventana" });
+  }
 };
 
 // --- 5. INSTALACIONES (Corregido para Drive con nombre cliente) ---

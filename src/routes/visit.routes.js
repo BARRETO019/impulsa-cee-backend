@@ -57,6 +57,7 @@ router.delete('/:id/envelope/:elementoId', verifyToken, verifyRole(rolesAutoriza
 // NUEVO: Añadimos 'upload' para recibir las fotos de los huecos
 router.post('/:id/windows', verifyToken, verifyRole(rolesAutorizados), upload, visitController.addWindow);
 router.get('/:id/windows', verifyToken, verifyRole(rolesAutorizados), visitController.getWindows);
+router.delete('/:id/windows/:windowId', verifyToken, verifyRole(rolesAutorizados), visitController.deleteWindow);
 
 // 5. Paso 5: Instalaciones 
 // NUEVO: Añadimos 'upload' para recibir las fotos de los equipos
