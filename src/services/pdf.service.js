@@ -68,6 +68,8 @@ const drawPDFContent = (doc, data) => {
   doc.moveDown(1.5);
 
   // --- 3. HUECOS Y VENTANAS (CON RETRANQUEO Y VOLADIZO) ---
+  // Opcional: Si queda poco espacio al final de la página, salta a la siguiente
+  if (doc.y > 700) doc.addPage();
   renderSectionHeader(doc, '3. HUECOS Y ACRISTALAMIENTOS');
   if (!windows || windows.length === 0) {
     doc.fontSize(10).text('No se han registrado huecos.');
