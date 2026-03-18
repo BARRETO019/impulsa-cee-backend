@@ -15,7 +15,8 @@ const drawPDFContent = (doc, data) => {
   const { visit, building, envelope, windows, installations, photos } = data;
 
   // --- CABECERA Y LOGO ---
-  const logoPath = path.join(__dirname, '../assets/logo.png');
+  // Usamos una ruta más segura para el logo
+  const logoPath = path.resolve(__dirname, '../assets/logo.png');
   if (fs.existsSync(logoPath)) {
     doc.image(logoPath, 50, 40, { width: 50 });
   }
@@ -32,13 +33,11 @@ const drawPDFContent = (doc, data) => {
   doc.fontSize(10).fillColor('#000').font('Helvetica-Bold');
   const startY = doc.y;
   
-  // Columna Izquierda
   doc.text('Dirección:', 50, startY).font('Helvetica').text(visit.direccion || '-', 135, startY);
   doc.font('Helvetica-Bold').text('Municipio:', 50, doc.y + 5).font('Helvetica').text(`${visit.municipio || '-'} (${visit.provincia || '-'})`, 135, doc.y - 10);
   doc.font('Helvetica-Bold').text('Motivo:', 50, doc.y + 5).font('Helvetica').text(visit.motivo_certificado || 'Certificación', 135, doc.y - 10);
   doc.font('Helvetica-Bold').text('Ref. Catastral:', 50, doc.y + 5).font('Helvetica').text(building?.referencia_catastral || '-', 135, doc.y - 10);
 
-  // Columna Derecha (Campos de Plantas y Alturas)
   doc.font('Helvetica-Bold').text('Año Const.:', 320, startY).font('Helvetica').text(visit.ano_construccion || '-', 410, startY);
   doc.font('Helvetica-Bold').text('Nº Plantas:', 320, doc.y + 5).font('Helvetica').text(`${visit.num_plantas || 1}`, 410, doc.y - 10);
   doc.font('Helvetica-Bold').text('Alt. Plantas:', 320, doc.y + 5).font('Helvetica').text(`${visit.alturas_plantas || '-'} m`, 410, doc.y - 10);
@@ -57,10 +56,8 @@ const drawPDFContent = (doc, data) => {
   if (envelope && envelope.length > 0) {
     envelope.forEach(e => {
       const esParticion = e.tipo?.toLowerCase().includes('partición') || e.tipo?.toLowerCase().includes('interior');
-      
       doc.fontSize(10).font('Helvetica-Bold').fillColor(esParticion ? '#555555' : '#000')
          .text(`• ${e.tipo || 'Elemento'}${esParticion ? ' (P. Interior)' : ''}`, { indent: 10 });
-      
       doc.fontSize(9).font('Helvetica').fillColor('#444')
          .text(`Dimensiones: ${e.largo || 0}m (L) x ${e.alto || 0}m (H) | Espesor: ${e.ancho || 0}m`, { indent: 20 });
       doc.text(`Superficie: ${e.superficie || 0} m² | Transmitancia (U): ${e.transmitancia || '-'} | Orientación: ${e.orientacion || 'N/A'}`, { indent: 20 });
@@ -77,14 +74,17 @@ const drawPDFContent = (doc, data) => {
     doc.fontSize(10).text('No se han registrado huecos.');
   } else {
     windows.forEach(w => {
-      doc.fontSize(10).font('Helvetica-Bold').text(`• ${w.nombre || 'Ventana'}`);
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#000').text(`• ${w.nombre || 'Ventana'}`);
       
-      // Dimensiones de ventana (Largo x Alto)
       const dimVentana = (w.largo && w.alto) ? `${w.largo}m x ${w.alto}m` : `${w.superficie} m² (Total)`;
 
       doc.fontSize(9).font('Helvetica').fillColor('#444')
          .text(`Fachada/Orientación: ${w.orientacion || 'No especificada'} | Dim: ${dimVentana}`, { indent: 15 });
-      doc.text(`Marco: ${w.marco || '-'} | Vidrio: ${w.vidrio || '-'} | Protección: ${w.proteccion || 'Ninguna'}`, { indent: 15 });
+      doc.text(`Marco: ${w.marco || '-'} | Vidrio: ${w.vidrio || '-'}`, { indent: 15 });
+      
+      // LA CORRECCIÓN ESTÁ AQUÍ: La línea debe estar DENTRO del forEach
+      doc.font('Helvetica-Bold').fillColor('#c0392b')
+         .text(`Protección Solar (CE3X): ${w.proteccion_solar || 'Sin protección'}`, { indent: 15 });
       
       const tieneFoto = photos?.some(p => p.tipo === `ventana_${w.id}`);
       if (tieneFoto) doc.fontSize(8).fillColor('#007bff').text('[ Foto vinculada en Drive ]', { indent: 15 });
@@ -92,9 +92,6 @@ const drawPDFContent = (doc, data) => {
       doc.fillColor('#000').moveDown(0.8);
     });
   }
-  // NUEVA LÍNEA PARA CE3X: PROTECCIÓN SOLAR
-  doc.font('Helvetica-Bold').fillColor('#c0392b')
-   .text(`Protección Solar (CE3X): ${w.proteccion_solar || 'Sin protección'}`, { indent: 15 });
   doc.moveDown(1);
 
   // --- 4. INSTALACIONES TÉRMICAS ---
