@@ -112,7 +112,8 @@ exports.deleteEnvelopeElement = async (req, res) => {
 exports.addWindow = async (req, res) => {
   try {
     const { id } = req.params;
-    // 1. Recogemos los nuevos campos (CE3X y Dimensiones)
+    
+    // 1. Recogemos todos los campos (Dimensiones, CE3X y Sombras)
     const { 
       nombre, 
       marco, 
@@ -121,16 +122,21 @@ exports.addWindow = async (req, res) => {
       orientacion, 
       proteccion_solar, 
       largo, 
-      alto 
+      alto,
+      retranqueo, // 🆕 Nuevo
+      voladizo    // 🆕 Nuevo
     } = req.body; 
     
-    // 2. Actualizamos la QUERY para incluir las nuevas columnas
+    // 2. Actualizamos la QUERY para incluir las nuevas columnas de sombras
     const query = `
-      INSERT INTO visit_windows (visit_id, nombre, superficie, orientacion, marco, vidrio, proteccion_solar, largo, alto) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+      INSERT INTO visit_windows (
+        visit_id, nombre, superficie, orientacion, marco, vidrio, 
+        proteccion_solar, largo, alto, retranqueo, voladizo
+      ) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
       RETURNING *`;
     
-    // 3. Pasamos los valores al array de parámetros
+    // 3. Pasamos los valores al array de parámetros (asegurando que sean números)
     const result = await pool.query(query, [
       id, 
       nombre || "Ventana", 
@@ -138,14 +144,16 @@ exports.addWindow = async (req, res) => {
       orientacion || "No especificada", 
       marco || "No especificado", 
       vidrio || "No especificado",
-      proteccion_solar || "Sin protección", // <--- Nuevo campo para CE3X
-      parseFloat(largo) || 0,               // <--- Nuevo campo dimensión
-      parseFloat(alto) || 0                 // <--- Nuevo campo dimensión
+      proteccion_solar || "Sin protección",
+      parseFloat(largo) || 0,
+      parseFloat(alto) || 0,
+      parseFloat(retranqueo) || 0, // 🆕 Valor por defecto 0
+      parseFloat(voladizo) || 0    // 🆕 Valor por defecto 0
     ]);
     
     const nuevaVentana = result.rows[0];
 
-    // --- Lógica de Fotos en Drive (Se mantiene igual de bien) ---
+    // --- Lógica de Fotos en Drive ---
     if (req.files && req.files.length > 0) {
       const folderName = await getFolderName(id);
       for (const file of req.files) {
@@ -199,7 +207,6 @@ exports.getInstallations = async (req, res) => {
     res.json(result.rows);
   } catch (error) { res.status(500).json({ error: "Error obteniendo instalaciones" }); }
 };
-
 // --- 6. FOTOS GENERALES (Corregido para Drive con nombre cliente) ---
 exports.uploadPhoto = async (req, res) => {
   try {
@@ -219,7 +226,6 @@ exports.uploadPhoto = async (req, res) => {
     res.status(201).json({ message: "Subido a Drive", count: savedPhotos.length });
   } catch (error) { res.status(500).json({ error: "Error en Drive" }); }
 };
-
 // --- 7. EXPORTACIÓN Y FINALIZACIÓN ---
 exports.exportPDF = async (req, res) => {
   try {

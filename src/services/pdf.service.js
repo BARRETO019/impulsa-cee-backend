@@ -15,7 +15,6 @@ const drawPDFContent = (doc, data) => {
   const { visit, building, envelope, windows, installations, photos } = data;
 
   // --- CABECERA Y LOGO ---
-  // Usamos una ruta más segura para el logo
   const logoPath = path.resolve(__dirname, '../assets/logo.png');
   if (fs.existsSync(logoPath)) {
     doc.image(logoPath, 50, 40, { width: 50 });
@@ -68,28 +67,49 @@ const drawPDFContent = (doc, data) => {
   }
   doc.moveDown(1.5);
 
-  // --- 3. HUECOS Y VENTANAS ---
+  // --- 3. HUECOS Y VENTANAS (CON RETRANQUEO Y VOLADIZO) ---
   renderSectionHeader(doc, '3. HUECOS Y ACRISTALAMIENTOS');
   if (!windows || windows.length === 0) {
     doc.fontSize(10).text('No se han registrado huecos.');
   } else {
     windows.forEach(w => {
+      // Título del Hueco
       doc.fontSize(10).font('Helvetica-Bold').fillColor('#000').text(`• ${w.nombre || 'Ventana'}`);
+      doc.moveDown(0.2);
       
-      const dimVentana = (w.largo && w.alto) ? `${w.largo}m x ${w.alto}m` : `${w.superficie} m² (Total)`;
+      const dimVentana = (w.largo && w.alto) ? `${w.largo}m x ${w.alto}m` : `${w.superficie} m²`;
 
+      // Línea 1: Orientación y Dimensiones
       doc.fontSize(9).font('Helvetica').fillColor('#444')
-         .text(`Fachada/Orientación: ${w.orientacion || 'No especificada'} | Dim: ${dimVentana}`, { indent: 15 });
-      doc.text(`Marco: ${w.marco || '-'} | Vidrio: ${w.vidrio || '-'}`, { indent: 15 });
-      
-      // LA CORRECCIÓN ESTÁ AQUÍ: La línea debe estar DENTRO del forEach
+         .text(`Orientación: `, 65, doc.y, { continued: true })
+         .font('Helvetica-Bold').text(`${w.orientacion || 'N/A'}`, { continued: true })
+         .font('Helvetica').text(`  |  Dimensiones: `, { continued: true })
+         .font('Helvetica-Bold').text(dimVentana);
+
+      // Línea 2: Marco y Vidrio
+      doc.font('Helvetica').fillColor('#444')
+         .text(`Marco: `, 65, doc.y, { continued: true })
+         .font('Helvetica-Bold').text(`${w.marco || '-'}`, { continued: true })
+         .font('Helvetica').text(`  |  Vidrio: `, { continued: true })
+         .font('Helvetica-Bold').text(`${w.vidrio || '-'}`);
+
+      // Línea 3: Sombras (RETRANQUEO Y VOLADIZO)
+      doc.font('Helvetica').fillColor('#444')
+         .text(`Retranqueo: `, 65, doc.y, { continued: true })
+         .font('Helvetica-Bold').text(`${w.retranqueo || 0} m`, { continued: true })
+         .font('Helvetica').text(`  |  Voladizo: `, { continued: true })
+         .font('Helvetica-Bold').text(`${w.voladizo || 0} m`);
+
+      // Línea 4: PROTECCIÓN SOLAR (CE3X)
+      doc.moveDown(0.3);
       doc.font('Helvetica-Bold').fillColor('#c0392b')
-         .text(`Protección Solar (CE3X): ${w.proteccion_solar || 'Sin protección'}`, { indent: 15 });
+         .text(`Protección Solar (CE3X): `, 65, doc.y, { continued: true })
+         .font('Helvetica').text(`${w.proteccion_solar || 'Sin protección'}`);
       
       const tieneFoto = photos?.some(p => p.tipo === `ventana_${w.id}`);
       if (tieneFoto) doc.fontSize(8).fillColor('#007bff').text('[ Foto vinculada en Drive ]', { indent: 15 });
       
-      doc.fillColor('#000').moveDown(0.8);
+      doc.fillColor('#000').moveDown(1);
     });
   }
   doc.moveDown(1);
@@ -101,7 +121,7 @@ const drawPDFContent = (doc, data) => {
   } else {
     installations.forEach(i => {
       doc.fontSize(10).font('Helvetica-Bold').text(`• ${i.tipo || 'Sistema'} - ${i.combustible || '-'}`);
-      doc.fontSize(9).font('Helvetica').text(`Generador/Modelo: ${i.generador || 'Genérico'} | Potencia: ${i.potencia_nominal || 0} kW | Año: ${i.ano_instalacion || '-'}`, { indent: 15 });
+      doc.fontSize(9).font('Helvetica').text(`Generador: ${i.generador || 'Genérico'} | Potencia: ${i.potencia_nominal || 0} kW | Año: ${i.ano_instalacion || '-'}`, { indent: 15 });
       
       const tieneFoto = photos?.some(p => p.tipo === `instalacion_${i.id}`);
       if (tieneFoto) doc.fontSize(8).fillColor('#007bff').text('[ Foto de placa técnica en Drive ]', { indent: 15 }).fillColor('#000');
