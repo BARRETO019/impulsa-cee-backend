@@ -9,11 +9,12 @@ function renderSectionHeader(doc, title) {
   doc.fillColor('#333333').fontSize(11).font('Helvetica-Bold').text(title, 60, currentY + 5);
   doc.moveDown(1.5);
 }
+
 // --- FUNCIÓN PRINCIPAL DE DIBUJO ---
 const drawPDFContent = (doc, data) => {
   const { visit, building, envelope, windows, installations, photos } = data;
 
-  // --- CABECERA ---
+  // --- CABECERA Y LOGO ---
   const logoPath = path.join(__dirname, '../assets/logo.png');
   if (fs.existsSync(logoPath)) {
     doc.image(logoPath, 50, 40, { width: 50 });
@@ -25,77 +26,75 @@ const drawPDFContent = (doc, data) => {
   doc.moveTo(50, 95).lineTo(550, 95).strokeColor('#004a99').lineWidth(2).stroke();
   doc.moveDown(3);
 
-  // --- 1. DATOS DEL INMUEBLE ---
+  // --- 1. DATOS DEL INMUEBLE Y VISITA ---
   renderSectionHeader(doc, '1. DATOS DEL INMUEBLE Y VISITA');
   
   doc.fontSize(10).fillColor('#000').font('Helvetica-Bold');
   const startY = doc.y;
   
   // Columna Izquierda
-  doc.text('Dirección:', 50, startY).font('Helvetica').text(visit.direccion || '-', 130, startY);
-  doc.font('Helvetica-Bold').text('Municipio:', 50, doc.y + 5).font('Helvetica').text(`${visit.municipio} (${visit.provincia})`, 130, doc.y - 10);
-  doc.font('Helvetica-Bold').text('Motivo:', 50, doc.y + 5).font('Helvetica').text(visit.motivo_certificado || 'Certificación Ordinaria', 130, doc.y - 10);
+  doc.text('Dirección:', 50, startY).font('Helvetica').text(visit.direccion || '-', 135, startY);
+  doc.font('Helvetica-Bold').text('Municipio:', 50, doc.y + 5).font('Helvetica').text(`${visit.municipio || '-'} (${visit.provincia || '-'})`, 135, doc.y - 10);
+  doc.font('Helvetica-Bold').text('Motivo:', 50, doc.y + 5).font('Helvetica').text(visit.motivo_certificado || 'Certificación', 135, doc.y - 10);
+  doc.font('Helvetica-Bold').text('Ref. Catastral:', 50, doc.y + 5).font('Helvetica').text(building?.referencia_catastral || '-', 135, doc.y - 10);
 
-  // Columna Derecha (a partir de x=320)
-  doc.font('Helvetica-Bold').text('Año Const.:', 320, startY).font('Helvetica').text(visit.ano_construccion || '-', 400, startY);
-  doc.font('Helvetica-Bold').text('Dormitorios:', 320, doc.y + 5).font('Helvetica').text(visit.dormitorios || '0', 400, doc.y - 10);
-  doc.font('Helvetica-Bold').text('Sup. Útil:', 320, doc.y + 5).font('Helvetica').text(`${visit.superficie || 0} m²`, 400, doc.y - 10);
+  // Columna Derecha (Campos de Plantas y Alturas)
+  doc.font('Helvetica-Bold').text('Año Const.:', 320, startY).font('Helvetica').text(visit.ano_construccion || '-', 410, startY);
+  doc.font('Helvetica-Bold').text('Nº Plantas:', 320, doc.y + 5).font('Helvetica').text(`${visit.num_plantas || 1}`, 410, doc.y - 10);
+  doc.font('Helvetica-Bold').text('Alt. Plantas:', 320, doc.y + 5).font('Helvetica').text(`${visit.alturas_plantas || '-'} m`, 410, doc.y - 10);
+  doc.font('Helvetica-Bold').text('Sup. Útil:', 320, doc.y + 5).font('Helvetica').text(`${building?.superficie_habitable || 0} m²`, 410, doc.y - 10);
   
-  // se añade potencia si existe
   if (visit.potencia_instalada) {
-    doc.font('Helvetica-Bold').fillColor('#d4a017')
-       .text('Pot. Solar:', 320, doc.y + 5)
-       .font('Helvetica').fillColor('#000')
-       .text(`${visit.potencia_instalada} kW`, 400, doc.y - 10);
+    doc.font('Helvetica-Bold').fillColor('#d4a017').text('Pot. Solar:', 320, doc.y + 5)
+       .font('Helvetica').fillColor('#000').text(`${visit.potencia_instalada} kW`, 410, doc.y - 10);
   }
-  //espacio de secciones 
-  doc.moveDown(2);
-
-  // --- 2. FACHADAS Y ORIENTACIONES
-  renderSectionHeader(doc, '2. FACHADAS Y ENVOLVENTE');
   
-  // Agrupamos fotos de fachadas
-  const fotosFachadas = photos?.filter(p => p.tipo.includes('fachada')) || [];
-  if (fotosFachadas.length > 0) {
-    doc.fontSize(10).font('Helvetica-Bold').text('Registros fotográficos de fachada:', 50);
-    doc.moveDown(0.5);
-    // Nota: Aquí iría la lógica de insertar imágenes si estuvieran locales o descargadas.
-    doc.font('Helvetica').fontSize(9).text(`Se han registrado ${fotosFachadas.length} orientaciones de fachada.`);
-  }
+  doc.moveDown(2.5);
+
+  // --- 2. ENVOLVENTE Y PARTICIONES ---
+  renderSectionHeader(doc, '2. FACHADAS, ENVOLVENTE Y PARTICIONES');
 
   if (envelope && envelope.length > 0) {
     envelope.forEach(e => {
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#000').text(`• ${e.tipo}`, { indent: 10 });
-      doc.font('Helvetica').fillColor('#444').text(`Superficie: ${e.superficie}m² | U-val: ${e.transmitancia || '-'} | Orientación: ${e.orientacion}`, { indent: 20 });
+      const esParticion = e.tipo?.toLowerCase().includes('partición') || e.tipo?.toLowerCase().includes('interior');
+      
+      doc.fontSize(10).font('Helvetica-Bold').fillColor(esParticion ? '#555555' : '#000')
+         .text(`• ${e.tipo || 'Elemento'}${esParticion ? ' (P. Interior)' : ''}`, { indent: 10 });
+      
+      doc.fontSize(9).font('Helvetica').fillColor('#444')
+         .text(`Dimensiones: ${e.largo || 0}m (L) x ${e.alto || 0}m (H) | Espesor: ${e.ancho || 0}m`, { indent: 20 });
+      doc.text(`Superficie: ${e.superficie || 0} m² | Transmitancia (U): ${e.transmitancia || '-'} | Orientación: ${e.orientacion || 'N/A'}`, { indent: 20 });
+      doc.moveDown(0.6);
     });
+  } else {
+    doc.fontSize(10).text('No se han registrado elementos de envolvente.', { indent: 10 });
   }
   doc.moveDown(1.5);
 
-  // --- 3. HUECOS Y VENTANAS (Con vinculación de fotos) ---
+  // --- 3. HUECOS Y VENTANAS ---
   renderSectionHeader(doc, '3. HUECOS Y ACRISTALAMIENTOS');
   if (!windows || windows.length === 0) {
     doc.fontSize(10).text('No se han registrado huecos.');
   } else {
     windows.forEach(w => {
-      // Título de la ventana
-      doc.fontSize(10).font('Helvetica-Bold').text(`• ${w.nombre}`, { b: true });
+      doc.fontSize(10).font('Helvetica-Bold').text(`• ${w.nombre || 'Ventana'}`);
       
-      // Detalles: Añadimos la Fachada/Orientación aquí
+      // Dimensiones de ventana (Largo x Alto)
+      const dimVentana = (w.largo && w.alto) ? `${w.largo}m x ${w.alto}m` : `${w.superficie} m² (Total)`;
+
       doc.fontSize(9).font('Helvetica').fillColor('#444')
-         .text(`Fachada: ${w.orientacion || 'No especificada'}`, { indent: 15 });
+         .text(`Fachada/Orientación: ${w.orientacion || 'No especificada'} | Dim: ${dimVentana}`, { indent: 15 });
+      doc.text(`Marco: ${w.marco || '-'} | Vidrio: ${w.vidrio || '-'} | Protección: ${w.proteccion || 'Ninguna'}`, { indent: 15 });
       
-      doc.text(`Dimensiones/Sup: ${w.superficie} m² | Marco: ${w.marco} | Vidrio: ${w.vidrio}`, { indent: 15 });
+      const tieneFoto = photos?.some(p => p.tipo === `ventana_${w.id}`);
+      if (tieneFoto) doc.fontSize(8).fillColor('#007bff').text('[ Foto vinculada en Drive ]', { indent: 15 });
       
-      // Vinculación de fotos
-      const tieneFoto = photos.some(p => p.tipo === `ventana_${w.id}`);
-      if (tieneFoto) {
-        doc.moveDown(0.2);
-        doc.fontSize(8).fillColor('#007bff').text('[ Foto adjunta en anexo ]', { indent: 15 });
-      }
-      
-      doc.fillColor('#000').moveDown(0.8); // Reset color y espacio para la siguiente
+      doc.fillColor('#000').moveDown(0.8);
     });
   }
+  // NUEVA LÍNEA PARA CE3X: PROTECCIÓN SOLAR
+  doc.font('Helvetica-Bold').fillColor('#c0392b')
+   .text(`Protección Solar (CE3X): ${w.proteccion_solar || 'Sin protección'}`, { indent: 15 });
   doc.moveDown(1);
 
   // --- 4. INSTALACIONES TÉRMICAS ---
@@ -104,26 +103,18 @@ const drawPDFContent = (doc, data) => {
     doc.fontSize(10).text('No se han registrado sistemas térmicos.');
   } else {
     installations.forEach(i => {
-      doc.fontSize(10).font('Helvetica-Bold').text(`• ${i.tipo} - ${i.combustible}`);
-      doc.fontSize(9).font('Helvetica').text(`Modelo: ${i.generador} | Potencia: ${i.potencia_nominal} kW | Año: ${i.ano_instalacion}`, { indent: 15 });
+      doc.fontSize(10).font('Helvetica-Bold').text(`• ${i.tipo || 'Sistema'} - ${i.combustible || '-'}`);
+      doc.fontSize(9).font('Helvetica').text(`Generador/Modelo: ${i.generador || 'Genérico'} | Potencia: ${i.potencia_nominal || 0} kW | Año: ${i.ano_instalacion || '-'}`, { indent: 15 });
       
-      const tieneFoto = photos.some(p => p.tipo === `instalacion_${i.id}`);
-      if (tieneFoto) doc.fontSize(8).fillColor('#007bff').text('[ Foto de placa técnica adjunta ]', { indent: 15 }).fillColor('#000');
+      const tieneFoto = photos?.some(p => p.tipo === `instalacion_${i.id}`);
+      if (tieneFoto) doc.fontSize(8).fillColor('#007bff').text('[ Foto de placa técnica en Drive ]', { indent: 15 }).fillColor('#000');
       doc.moveDown(0.5);
     });
   }
 
-  // --- 5. ANEXO FOTOGRÁFICO (Si hay fotos locales) ---
-  // IMPORTANTE: PDFKit necesita que las imágenes estén en el disco del servidor para doc.image()
-  const fotosGenerales = photos?.filter(p => p.tipo === 'general') || [];
-  if (fotosGenerales.length > 0) {
-    doc.addPage();
-    renderSectionHeader(doc, '5. ANEXO FOTOGRÁFICO');
-    // Aquí podrías iterar y usar doc.image(path_local) si las descargas de Drive antes
-  }
-
   doc.end();
 };
+
 // --- EXPORTS ---
 exports.generatePDF = (res, data) => {
   const doc = new PDFDocument({ margin: 50, size: 'A4' });
@@ -132,6 +123,7 @@ exports.generatePDF = (res, data) => {
   doc.pipe(res);
   drawPDFContent(doc, data);
 };
+
 exports.createPDFFile = (data, outputPath) => {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 50, size: 'A4' });
