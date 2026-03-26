@@ -1,26 +1,77 @@
-# ⚙️ Impulsa Energía - API Backend (v0.2)
+# ⚙️ Impulsa CEE Backend
 
-Servidor robusto basado en **Node.js** y **Express** que gestiona la lógica de negocio, autenticación y almacenamiento de datos para la App de Certificaciones Técnicas.
+Robust **Node.js + Express** backend powering **Impulsa CEE**, a business platform designed to support **energy certification workflows**.
 
-## 🛠️ Stack Tecnológico
-* **Runtime:** Node.js (Express.js)
-* **Base de Datos:** PostgreSQL alojada en **Neon.tech** con pool de conexiones.
-* **Autenticación:** Seguridad mediante **JWT** (JSON Web Tokens) con control de roles (técnico, CEO, admin).
-* **Almacenamiento:** Integración con **Google Drive API v3** para almacenamiento masivo de imágenes (2TB).
-* **Gestión Externa:** Sincronización con **Airtable API** para la gestión de clientes y estados de visita.
-
-## 📡 Endpoints Principales
-* `POST /api/visits`: Registro de nueva inspección técnica.
-* `PUT /api/visits/:id/building`: Persistencia de datos de envolvente y construcción.
-* `POST /api/visits/:id/windows`: Gestión de huecos y subida automatizada de fotos a Google Drive.
-* `DELETE /api/visits/:id/envelope/:elementoId`: Borrado seguro de elementos de la base de datos.
-* `POST /api/visits/:id/finalize`: Orquestación de finalización de visita y generación de documentos.
-
-## 📁 Arquitectura del Proyecto
-* `/controllers`: Lógica de negocio y consultas SQL optimizadas.
-* `/routes`: Definición de los puntos de acceso de la API con protección de rutas.
-* `/services`: Módulos de integración con servicios externos (Drive, Airtable, PDF).
-* `/middleware`: Capa de seguridad, validación de tokens y gestión de archivos con **Multer**.
+This API handles core business logic, authentication, structured data storage and third-party integrations for technicians and internal operations.
 
 ---
-*Backend desplegado en **Render**. Arquitectura escalable y segura para trabajo de campo.*
+
+## 🚀 Overview
+
+The backend is responsible for:
+
+- managing technical inspection workflows
+- handling authenticated user access
+- storing structured visit and building data
+- processing field records
+- integrating external business services
+- supporting document and image generation pipelines
+
+---
+
+## 🛠 Tech Stack
+
+- **Runtime:** Node.js + Express
+- **Database:** PostgreSQL (hosted on Neon)
+- **Authentication:** JWT-based auth with role-based access control
+- **Storage:** Google Drive API v3 for large-scale image storage
+- **External Sync:** Airtable API integration
+- **Deployment:** Render
+
+---
+
+## 🔐 Authentication & Security
+
+This API includes:
+
+- JWT authentication
+- protected routes
+- role-based access control:
+  - technician
+  - admin
+  - CEO
+- request validation
+- secure file handling with **Multer**
+
+---
+
+## 📡 Main Endpoints
+
+### Visits
+- `POST /api/visits` → Create a new technical inspection
+- `POST /api/visits/:id/finalize` → Finalize visit workflow and trigger document processes
+
+### Building & Envelope Data
+- `PUT /api/visits/:id/building` → Save building and thermal envelope data
+- `DELETE /api/visits/:id/envelope/:elementoId` → Remove stored envelope elements safely
+
+### Windows & Installations
+- `POST /api/visits/:id/windows` → Manage windows/openings and upload related images
+- Additional installation-related endpoints handle technical system records
+
+---
+
+## 🔗 Related Repository
+
+Frontend App:  
+👉 https://github.com/BARRETO019/impulsa-cee-frontend
+
+---
+
+## 📁 Project Architecture
+
+```bash id="5qg6rk"
+controllers/
+routes/
+services/
+middleware/
