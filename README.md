@@ -2,7 +2,7 @@
 
 Robust **Node.js + Express** backend powering **Impulsa CEE**, a business platform designed to support **energy certification workflows**.
 
-This API handles core business logic, authentication, structured data storage and third-party integrations for technicians and internal operations.
+This API handles business logic, authentication, structured data storage and third-party integrations for technicians and internal operations.
 
 ---
 
@@ -15,7 +15,21 @@ The backend is responsible for:
 - storing structured visit and building data
 - processing field records
 - integrating external business services
-- supporting document and image generation pipelines
+- supporting image and document workflows
+
+---
+
+## 🎯 Project Purpose
+
+This backend was built to support a **real operational workflow** in the energy certification sector.
+
+Its goal is to replace fragmented manual processes with a structured system for:
+
+- collecting field inspection data
+- managing technical visit records
+- centralizing business information
+- automating document and image handling
+- improving reliability in day-to-day operations
 
 ---
 
@@ -45,33 +59,35 @@ This API includes:
 
 ---
 
-## 📡 Main Endpoints
+## 📡 Main API Responsibilities
 
-### Visits
-- `POST /api/visits` → Create a new technical inspection
-- `POST /api/visits/:id/finalize` → Finalize visit workflow and trigger document processes
+The API currently supports workflows related to:
 
-### Building & Envelope Data
-- `PUT /api/visits/:id/building` → Save building and thermal envelope data
-- `DELETE /api/visits/:id/envelope/:elementoId` → Remove stored envelope elements safely
+- user authentication
+- technical visit creation and management
+- building and thermal envelope data persistence
+- windows and installation data registration
+- image upload and storage
+- synchronization with external business services
 
-### Windows & Installations
-- `POST /api/visits/:id/windows` → Manage windows/openings and upload related images
-- Additional installation-related endpoints handle technical system records
+> Endpoint structure may evolve as the project grows and is refined.
 
 ---
 
 ## 🔗 Related Repository
 
-Frontend App:  
-👉 https://github.com/BARRETO019/impulsa-cee-frontend
+Frontend App: [impulsa-cee-frontend](https://github.com/BARRETO019/impulsa-cee-frontend)
 
 ---
 
 ## 📁 Project Architecture
 
-```bash id="5qg6rk"
-controllers/
-routes/
-services/
-middleware/
+```bash
+src/
+├── assets/
+├── config/
+├── controllers/
+├── middleware/
+├── routes/
+├── services/
+└── app.js
