@@ -63,11 +63,11 @@ pool.query('SELECT NOW()')
 // RUTAS
 // ==============================
 
-const authRoutes = require('./routes/auth.routes');
+const authRoutes = require('./modules/auth/presentation/routes/auth.routes');
 app.use('/api/auth', authRoutes);
 
-const visitRoutes = require('./routes/visit.routes');
-app.use('/api/visits', visitRoutes);
+const inspectionRoutes = require('./routes/inspection.routes');
+app.use('/api/visits', inspectionRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: "API CEE funcionando 🚀" });
