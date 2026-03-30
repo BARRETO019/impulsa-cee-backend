@@ -1,13 +1,9 @@
-// src/modules/auth/presentation/controllers/auth.controller.js
-const UserRepository = require('../../../infrastructure/repositories/user.repository');
-const PasswordService = require('../../../infrastructure/auth/password.service');
-const TokenService = require('../../../infrastructure/auth/token.service');
-const LoginUserUseCase = require('../../../application/use-cases/login-user.use-case');
-const RegisterUserUseCase = require('../../../application/use-cases/register-user.use-case');
+const UserRepository = require('../../infrastructure/repositories/user.repository');
+const PasswordService = require('../../infrastructure/auth/password.service');
+const TokenService = require('../../infrastructure/auth/token.service');
 
-const userRepository = new UserRepository();
-const passwordService = new PasswordService();
-const tokenService = new TokenService();
+const LoginUserUseCase = require('../../application/use-cases/login-user.use-case');
+const RegisterUserUseCase = require('../../application/use-cases/register-user.use-case');
 
 const loginUserUseCase = new LoginUserUseCase(
   userRepository,
