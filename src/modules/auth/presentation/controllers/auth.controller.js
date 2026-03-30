@@ -5,6 +5,11 @@ const TokenService = require('../../infrastructure/auth/token.service');
 const LoginUserUseCase = require('../../application/use-cases/login-user.use-case');
 const RegisterUserUseCase = require('../../application/use-cases/register-user.use-case');
 
+
+const userRepository = new UserRepository();
+const passwordService = new PasswordService();
+const tokenService = new TokenService();
+
 const loginUserUseCase = new LoginUserUseCase(
   userRepository,
   passwordService,
@@ -15,7 +20,6 @@ const registerUserUseCase = new RegisterUserUseCase(
   userRepository,
   passwordService
 );
-
 exports.login = async (req, res) => {
   try {
     const result = await loginUserUseCase.execute(req.body);
