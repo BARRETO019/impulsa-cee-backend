@@ -9,63 +9,64 @@ const pool = require('./config/db');
 const app = express();
 
 // ==============================
-// SEGURIDAD
+// 1. CORS - DEBE IR PRIMERO
 // ==============================
-
-app.use(helmet());
-
-// ==============================
-// CORS (VERSIÓN SIMPLE Y FUNCIONAL)
-// ==============================
-
+// Esto maneja las cabeceras antes que cualquier otro middleware
 app.use(cors({
-  origin: true,       // 🔥 permite cualquier origin dinámicamente
-  credentials: true
+  origin: 'https://impulsa-cee-frontend.vercel.app', // URL exacta de tu frontend
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// 🔥 MUY IMPORTANTE para Cloud Run (preflight)
+// Responder a peticiones preflight (OPTIONS) de manera global
 app.options('*', cors());
 
 // ==============================
-// MIDDLEWARES
+// 2. SEGURIDAD (HELMET)
 // ==============================
+app.use(helmet({
+  // Esto es vital para que Helmet no bloquee la comunicación entre dominios
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
+// ==============================
+// 3. MIDDLEWARES ESTÁNDAR
+// ==============================
 app.use(express.json({ limit: "10mb" }));
-
-// Limitar intentos de login
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10
-});
-
-app.use('/api/auth/login', loginLimiter);
-
 app.use(morgan('dev'));
 
-// ==============================
-// CONEXIÓN DB
-// ==============================
+// Limitar intentos de login (Protección de fuerza bruta)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10,
+  message: "Demasiados intentos de inicio de sesión, intenta de nuevo en 15 minutos"
+});
 
+// ==============================
+// 4. CONEXIÓN DB
+// ==============================
 pool.query('SELECT NOW()')
   .then(res => console.log('DB conectada:', res.rows[0]))
   .catch(err => console.error('Error DB:', err));
 
 // ==============================
-// RUTAS
+// 5. RUTAS
 // ==============================
 
+// Aplicamos el limitador específicamente a la ruta de login
 const authRoutes = require('./modules/auth/presentation/routes/auth.routes');
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', loginLimiter, authRoutes); 
 
 const inspectionRoutes = require('./routes/inspection.routes');
 app.use('/api/visits', inspectionRoutes);
 
-// ==============================
-// ROOT
-// ==============================
-
+// Root / Health Check
 app.get('/', (req, res) => {
   res.json({ message: "API CEE funcionando 🚀" });
 });
 
+// ==============================
+// EXPORTAR
+// ==============================
 module.exports = app;
