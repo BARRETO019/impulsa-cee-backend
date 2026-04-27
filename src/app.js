@@ -56,8 +56,8 @@ app.use(morgan('dev'));
 // ==============================
 
 pool.query('SELECT NOW()')
-  .then(res => console.log('DB conectada:', res.rows[0]))
-  .catch(err => console.error('Error DB:', err));
+ .then(res => console.log('DB conectada:', res.rows[0]))
+.catch(err => console.error('Error DB:', err));
 
 // ==============================
 // RUTAS
