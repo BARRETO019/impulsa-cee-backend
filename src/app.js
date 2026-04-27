@@ -15,21 +15,22 @@ const app = express();
 app.use(helmet());
 
 // ==============================
-// CORS (CORREGIDO)
+// CORS (VERSIÓN DEFINITIVA)
 // ==============================
-
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://impulsa-cee-frontend.vercel.app"
-];
 
 app.use(cors({
   origin: function (origin, callback) {
 
-    // Permitir requests sin origin (Postman, mobile apps, etc)
+    // permitir requests sin origin (Postman, apps, etc)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
+    // localhost
+    if (origin === "http://localhost:5173") {
+      return callback(null, true);
+    }
+
+    // TODOS los dominios de Vercel (preview + prod)
+    if (origin.includes("vercel.app")) {
       return callback(null, true);
     }
 
@@ -74,6 +75,10 @@ app.use('/api/auth', authRoutes);
 
 const inspectionRoutes = require('./routes/inspection.routes');
 app.use('/api/visits', inspectionRoutes);
+
+// ==============================
+// ROOT
+// ==============================
 
 app.get('/', (req, res) => {
   res.json({ message: "API CEE funcionando 🚀" });
