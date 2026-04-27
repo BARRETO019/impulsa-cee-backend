@@ -15,16 +15,16 @@ const app = express();
 app.use(helmet());
 
 // ==============================
-// CORS (VERSIÓN DEFINITIVA)
+// CORS (VERSIÓN PRODUCCIÓN)
 // ==============================
 
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
 
-    // permitir requests sin origin (Postman, apps, etc)
+    // Permitir sin origin (Postman, apps móviles, etc)
     if (!origin) return callback(null, true);
 
-    // localhost
+    // Local
     if (origin === "http://localhost:5173") {
       return callback(null, true);
     }
@@ -40,7 +40,12 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
-}));
+};
+
+app.use(cors(corsOptions));
+
+// 🔥 CLAVE para Cloud Run (preflight)
+app.options('*', cors(corsOptions));
 
 // ==============================
 // MIDDLEWARES
