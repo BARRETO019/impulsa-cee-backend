@@ -15,37 +15,16 @@ const app = express();
 app.use(helmet());
 
 // ==============================
-// CORS (VERSIÓN PRODUCCIÓN)
+// CORS (VERSIÓN SIMPLE Y FUNCIONAL)
 // ==============================
 
-const corsOptions = {
-  origin: function (origin, callback) {
-
-    // Permitir sin origin (Postman, apps móviles, etc)
-    if (!origin) return callback(null, true);
-
-    // Local
-    if (origin === "http://localhost:5173") {
-      return callback(null, true);
-    }
-
-    // TODOS los dominios de Vercel (preview + prod)
-    if (origin.includes("vercel.app")) {
-      return callback(null, true);
-    }
-
-    console.log("❌ CORS bloqueado:", origin);
-    return callback(new Error("CORS no permitido"), false);
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+app.use(cors({
+  origin: true,       // 🔥 permite cualquier origin dinámicamente
   credentials: true
-};
+}));
 
-app.use(cors(corsOptions));
-
-// 🔥 CLAVE para Cloud Run (preflight)
-app.options('*', cors(corsOptions));
+// 🔥 MUY IMPORTANTE para Cloud Run (preflight)
+app.options('*', cors());
 
 // ==============================
 // MIDDLEWARES
