@@ -14,30 +14,36 @@ const app = express();
 
 app.use(helmet());
 
-// * CORS PARA RENDER *
+// ==============================
+// CORS (CORREGIDO)
+// ==============================
+
 const allowedOrigins = [
   "http://localhost:5173",
-  process.env.FRONTEND_URL,                 // desde variable
-  "https://impulsa-cee-frontend.vercel.app'"  // fijo por seguridad
+  "https://impulsa-cee-frontend.vercel.app"
 ];
 
-const corsOptions = {
+app.use(cors({
   origin: function (origin, callback) {
+
+    // Permitir requests sin origin (Postman, mobile apps, etc)
     if (!origin) return callback(null, true);
+
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
-    } else {
-      return callback(new Error("CORS bloqueado: " + origin), false);
     }
+
+    console.log("❌ CORS bloqueado:", origin);
+    return callback(new Error("CORS no permitido"), false);
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
-};
+}));
 
-// ✅ SOLUCIÓN RADICAL: Aplicamos CORS globalmente. 
-// Esto maneja automáticamente los OPTIONS sin necesidad de definir rutas con "*"
-app.use(cors(corsOptions));
+// ==============================
+// MIDDLEWARES
+// ==============================
 
 app.use(express.json({ limit: "10mb" }));
 
@@ -56,8 +62,8 @@ app.use(morgan('dev'));
 // ==============================
 
 pool.query('SELECT NOW()')
- .then(res => console.log('DB conectada:', res.rows[0]))
-.catch(err => console.error('Error DB:', err));
+  .then(res => console.log('DB conectada:', res.rows[0]))
+  .catch(err => console.error('Error DB:', err));
 
 // ==============================
 // RUTAS
