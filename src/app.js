@@ -9,35 +9,32 @@ const pool = require('./config/db');
 const app = express();
 
 // ==============================
-// 1. CONFIGURACIÓN DE CORS (ESTÁTICA)
+// 1. CONFIGURACIÓN DE CORS
 // ==============================
 const corsOptions = {
   origin: 'https://impulsa-cee-frontend.vercel.app',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200 // Responde OK a los navegadores que hacen preflight
+  optionsSuccessStatus: 200
 };
 
-// Aplicar CORS antes de cualquier otro middleware
+// ✅ SOLO ESTO
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 
 // ==============================
-// 2. SEGURIDAD (HELMET)
+// 2. SEGURIDAD
 // ==============================
 app.use(helmet({
-  // Importante: permite que recursos de otros dominios se carguen si es necesario
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
 // ==============================
-// 3. MIDDLEWARES ESTÁNDAR
+// 3. MIDDLEWARES
 // ==============================
 app.use(express.json({ limit: "10mb" }));
 app.use(morgan('dev'));
 
-// Limitar intentos de login para seguridad
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -45,34 +42,23 @@ const loginLimiter = rateLimit({
 });
 
 // ==============================
-// 4. CONEXIÓN DB (VERIFICACIÓN)
+// 4. DB
 // ==============================
 pool.query('SELECT NOW()')
-  .then(res => console.log('DB conectada correctamente'))
-  .catch(err => console.error('Error crítico conectando a la DB:', err));
+  .then(() => console.log('DB conectada correctamente'))
+  .catch(err => console.error('Error DB:', err));
 
 // ==============================
 // 5. RUTAS
 // ==============================
-
-// Rutas de autenticación con el limitador aplicado
 const authRoutes = require('./modules/auth/presentation/routes/auth.routes');
 app.use('/api/auth', loginLimiter, authRoutes);
 
 const inspectionRoutes = require('./routes/inspection.routes');
 app.use('/api/visits', inspectionRoutes);
 
-// Health Check para Cloud Run
 app.get('/', (req, res) => {
-  res.json({ 
-    status: "online",
-    message: "API CEE funcionando 🚀" 
-  });
+  res.json({ status: "online", message: "API CEE funcionando 🚀" });
 });
 
-// ==============================
-// 6. EXPORTAR O ESCUCHAR
-// ==============================
-// Asegúrate de que tu archivo de entrada (index.js o server.js) 
-// use process.env.PORT para el app.listen
 module.exports = app;
