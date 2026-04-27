@@ -1,8 +1,13 @@
 require('dotenv').config();
+
 const app = require('./src/app');
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 8080;
 
-app.listen(PORT, () => {
-  console.log(`Servidor funcionando en puerto ${PORT}`);
-});
+try {
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor funcionando en puerto ${PORT}`);
+  });
+} catch (error) {
+  console.error("❌ ERROR AL ARRANCAR:", error);
+}
