@@ -18,7 +18,7 @@ app.use(helmet());
 const allowedOrigins = [
   "http://localhost:5173",
   process.env.FRONTEND_URL,                 // desde variable
-  "https://impulsa-cee-frontend.onrender.com"  // fijo por seguridad
+  "https://impulsa-cee-frontend.vercel.app'"  // fijo por seguridad
 ];
 
 const corsOptions = {
